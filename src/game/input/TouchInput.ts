@@ -2,20 +2,18 @@ import Phaser from 'phaser';
 import type { InputSource } from './InputSource';
 import { neutralInput, type PlayerInputState } from './PlayerInput';
 
-const STICK_X = 150;
-const STICK_Y = 580;
-const STICK_RADIUS = 64;
-const STICK_GRAB_RADIUS = 120;
-const KNOB_RADIUS = 26;
-const JUMP_X = 1130;
-const JUMP_Y = 580;
-const JUMP_RADIUS = 52;
-const JUMP_FILL_ALPHA = 0.82;
+const STICK_RADIUS = 52;
+const STICK_GRAB_RADIUS = 72;
+const KNOB_RADIUS = 22;
+const JUMP_RADIUS = 46;
+const EDGE = 36;
 const DEADZONE = 0.18;
+const JUMP_FILL_ALPHA = 0.78;
+const TOUCH_LAYOUT_QUERY = '(pointer: coarse) and (hover: none)';
 
-/** プライマリポインタがタッチのときだけスマホ用UIを出す。マウス操作のPCでは出さない。 */
+/** マウス操作のPCでは false。スマホの横持ちだけ true。 */
 export function isTouchLayout(): boolean {
-  return window.matchMedia('(pointer: coarse)').matches;
+  return window.matchMedia(TOUCH_LAYOUT_QUERY).matches;
 }
 
 export class TouchInput implements InputSource {
@@ -24,6 +22,10 @@ export class TouchInput implements InputSource {
   private readonly knob: Phaser.GameObjects.Arc;
   private readonly jumpButton: Phaser.GameObjects.Arc;
   private readonly media: MediaQueryList;
+  private readonly stickX: number;
+  private readonly stickY: number;
+  private readonly jumpX: number;
+  private readonly jumpY: number;
   private enabled: boolean;
   private moveX = 0;
   private moveY = 0;
@@ -34,13 +36,16 @@ export class TouchInput implements InputSource {
   private readonly onPointerDown = (pointer: Phaser.Input.Pointer): void => {
     if (!this.enabled) return;
 
-    if (distance(pointer.x, pointer.y, JUMP_X, JUMP_Y) <= JUMP_RADIUS) {
+    if (distance(pointer.x, pointer.y, this.jumpX, this.jumpY) <= JUMP_RADIUS) {
       this.jumpQueued = true;
-      this.jumpButton.setFillStyle(0xffe08a, 0.85);
+      this.jumpButton.setFillStyle(0xffe08a, 0.9);
       return;
     }
 
-    if (this.stickPointerId === null && distance(pointer.x, pointer.y, STICK_X, STICK_Y) <= STICK_GRAB_RADIUS) {
+    if (
+      this.stickPointerId === null &&
+      distance(pointer.x, pointer.y, this.stickX, this.stickY) <= STICK_GRAB_RADIUS
+    ) {
       this.stickPointerId = pointer.id;
       this.updateStick(pointer.x, pointer.y);
     }
@@ -64,15 +69,22 @@ export class TouchInput implements InputSource {
     this.scene = scene;
     scene.input.addPointer(2);
 
-    const base = scene.add.circle(STICK_X, STICK_Y, STICK_RADIUS, 0xffffff, 0.22);
-    base.setStrokeStyle(3, 0xffffff, 0.8);
-    this.knob = scene.add.circle(STICK_X, STICK_Y, KNOB_RADIUS, 0xffffff, 0.75);
-    this.jumpButton = scene.add.circle(JUMP_X, JUMP_Y, JUMP_RADIUS, 0xffffff, JUMP_FILL_ALPHA);
+    const width = scene.scale.gameSize.width;
+    const height = scene.scale.gameSize.height;
+    this.stickX = EDGE + STICK_RADIUS;
+    this.stickY = height - EDGE - STICK_RADIUS;
+    this.jumpX = width - EDGE - JUMP_RADIUS;
+    this.jumpY = this.stickY;
+
+    const base = scene.add.circle(this.stickX, this.stickY, STICK_RADIUS, 0xffffff, 0.2);
+    base.setStrokeStyle(3, 0xffffff, 0.75);
+    this.knob = scene.add.circle(this.stickX, this.stickY, KNOB_RADIUS, 0xffffff, 0.85);
+    this.jumpButton = scene.add.circle(this.jumpX, this.jumpY, JUMP_RADIUS, 0xffffff, JUMP_FILL_ALPHA);
     this.jumpButton.setStrokeStyle(3, 0xffffff, 0.9);
     const jumpLabel = scene.add
-      .text(JUMP_X, JUMP_Y, 'ジャンプ', {
+      .text(this.jumpX, this.jumpY, 'ジャンプ', {
         fontFamily: 'sans-serif',
-        fontSize: '16px',
+        fontSize: '15px',
         color: '#222222'
       })
       .setOrigin(0.5);
@@ -81,7 +93,7 @@ export class TouchInput implements InputSource {
     this.ui.setScrollFactor(0);
     this.ui.setDepth(1000);
 
-    this.media = window.matchMedia('(pointer: coarse)');
+    this.media = window.matchMedia(TOUCH_LAYOUT_QUERY);
     this.enabled = isTouchLayout();
     this.ui.setVisible(this.enabled);
     this.media.addEventListener('change', this.onMediaChange);
@@ -129,15 +141,15 @@ export class TouchInput implements InputSource {
   }
 
   private updateStick(x: number, y: number): void {
-    let dx = x - STICK_X;
-    let dy = y - STICK_Y;
+    let dx = x - this.stickX;
+    let dy = y - this.stickY;
     const dist = Math.hypot(dx, dy);
     if (dist > STICK_RADIUS && dist > 0) {
       dx = (dx / dist) * STICK_RADIUS;
       dy = (dy / dist) * STICK_RADIUS;
     }
 
-    this.knob.setPosition(STICK_X + dx, STICK_Y + dy);
+    this.knob.setPosition(this.stickX + dx, this.stickY + dy);
 
     const nx = dx / STICK_RADIUS;
     const ny = dy / STICK_RADIUS;
@@ -155,7 +167,7 @@ export class TouchInput implements InputSource {
     this.stickPointerId = null;
     this.moveX = 0;
     this.moveY = 0;
-    this.knob.setPosition(STICK_X, STICK_Y);
+    this.knob.setPosition(this.stickX, this.stickY);
   }
 }
 

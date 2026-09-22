@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
-import { KeyboardInput } from '../input/KeyboardInput';
-import { PlayerInput } from '../input/PlayerInput';
-import { TouchInput } from '../input/TouchInput';
+import { createPlayerInput } from '../input/createPlayerInput';
+import type { PlayerInput } from '../input/PlayerInput';
 import { PlaceholderPlayer } from '../player/PlaceholderPlayer';
 
 export class BattleScene extends Phaser.Scene {
@@ -29,7 +28,7 @@ export class BattleScene extends Phaser.Scene {
     this.player = new PlaceholderPlayer(this, 640, 470);
     this.physics.add.collider(this.player.object, ground);
 
-    this.playerInput = new PlayerInput([new KeyboardInput(this), new TouchInput(this)]);
+    this.playerInput = createPlayerInput(this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.playerInput.destroy());
   }
 
