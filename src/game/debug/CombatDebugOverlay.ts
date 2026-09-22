@@ -22,7 +22,7 @@ export class CombatDebugOverlay {
       .setVisible(false);
   }
 
-  draw(enabled: boolean, hurtboxes: readonly Rect[]): void {
+  draw(enabled: boolean, hurtboxes: readonly Rect[], stageLine = ''): void {
     this.graphics.clear();
     this.label.setVisible(enabled);
     if (!enabled) return;
@@ -30,7 +30,8 @@ export class CombatDebugOverlay {
     const { left, right, top, bottom } = this.bounds;
     this.graphics.lineStyle(2, 0xff4d6a, 0.85);
     this.graphics.strokeRect(left, top, right - left, bottom - top);
-    this.label.setText(`KO境界  左 ${left}  右 ${right}  上 ${top}  下 ${bottom}`);
+    const boundsLine = `KO境界  左 ${left}  右 ${right}  上 ${top}  下 ${bottom}`;
+    this.label.setText(stageLine ? `${stageLine}\n${boundsLine}` : boundsLine);
 
     this.graphics.lineStyle(2, 0x14b8a6, 1);
     for (const box of hurtboxes) {

@@ -9,19 +9,20 @@ import { PLAYER_TWO_KEYBOARD_LAYOUT } from '../input/KeyboardInput';
 import type { PlayerInput } from '../input/PlayerInput';
 import { StockMatch, STARTING_STOCKS, type MatchAction } from '../match/StockMatch';
 import { Fighter } from '../player/Fighter';
-import { PLACEHOLDER_STAGE } from '../stage/PlaceholderStage';
+import { OHIRUNE_MEADOW } from '../stage/ohiruneMeadow';
+import { StageRuntime } from '../stage/StageRuntime';
 import { MobileHudLayout } from '../ui/MobileHudLayout';
 
-const SPAWNS = [
-  { x: 460, y: 470, color: 0x6aa6ff, character: MOCHIMARU },
-  { x: 820, y: 470, color: 0xf08a5d, character: POTECHI }
+const ROSTER = [
+  { color: 0x6aa6ff, character: MOCHIMARU },
+  { color: 0xf08a5d, character: POTECHI }
 ] as const;
 
 type FighterSlot = {
   fighter: Fighter;
   input: PlayerInput;
-  spawnX: number;
-  spawnY: number;
+  respawnX: number;
+  respawnY: number;
 };
 
 type HudSlot = {
@@ -38,6 +39,8 @@ export class BattleScene extends Phaser.Scene {
   private debugKey: Phaser.Input.Keyboard.Key | null = null;
   private debugEnabled = false;
   private debugOverlay!: CombatDebugOverlay;
+  private stage!: StageRuntime;
+  private startedAt: number | null = null;
 
   constructor() {
     super('BattleScene');
@@ -47,28 +50,30 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.setScroll(0, 0);
     this.input.mouse?.disableContextMenu();
 
-    const ground = this.add.rectangle(640, 610, 900, 90, 0x79b85a);
-    ground.setDepth(0);
-    this.physics.add.existing(ground, true);
+    this.stage = new StageRuntime(this, OHIRUNE_MEADOW);
+    this.startedAt = null;
 
-    this.match = new StockMatch(SPAWNS.length, STARTING_STOCKS);
+    this.match = new StockMatch(ROSTER.length, STARTING_STOCKS);
     this.slots.length = 0;
 
-    SPAWNS.forEach((spawn, index) => {
+    ROSTER.forEach((entry, index) => {
+      const spawn = OHIRUNE_MEADOW.spawnPoints[index];
+      const respawn = OHIRUNE_MEADOW.respawnPoints[index];
+      if (!spawn || !respawn) return;
       const id = (index + 1) as 1 | 2;
-      const fighter = new Fighter(this, id, spawn.x, spawn.y, spawn.color, spawn.character);
-      this.physics.add.collider(fighter.character.object, ground);
+      const fighter = new Fighter(this, id, spawn.x, spawn.y, entry.color, entry.character);
       const input = createPlayerInput(
         this,
         index === 0 ? { touch: true } : { layout: PLAYER_TWO_KEYBOARD_LAYOUT, touch: false }
       );
-      this.slots.push({ fighter, input, spawnX: spawn.x, spawnY: spawn.y });
+      this.slots.push({ fighter, input, respawnX: respawn.x, respawnY: respawn.y });
     });
+    this.stage.bind(this.slots.map((slot) => slot.fighter.character.object));
 
-    this.hud = SPAWNS.map((spawn, index) => this.createHud(spawn.character.displayName, index));
+    this.hud = ROSTER.map((entry, index) => this.createHud(entry.character.displayName, index));
     new MobileHudLayout(this, this.hud);
     this.refreshHud();
-    this.debugOverlay = new CombatDebugOverlay(this, PLACEHOLDER_STAGE.koBounds);
+    this.debugOverlay = new CombatDebugOverlay(this, OHIRUNE_MEADOW.koBounds);
 
     this.resultText = this.add
       .text(640, 250, '', {
@@ -92,12 +97,17 @@ export class BattleScene extends Phaser.Scene {
   }
 
   update(time: number): void {
+    if (this.startedAt === null) this.startedAt = time;
+    const elapsed = time - this.startedAt;
+
     if (this.match.isFinished) {
+      this.stage.hideWarning();
       if (this.restartKey && Phaser.Input.Keyboard.JustDown(this.restartKey)) this.scene.restart();
       return;
     }
 
     if (this.debugKey && Phaser.Input.Keyboard.JustDown(this.debugKey)) this.debugEnabled = !this.debugEnabled;
+    this.stage.update(elapsed);
 
     for (const slot of this.slots) slot.fighter.update(slot.input.read(), time);
 
@@ -122,14 +132,15 @@ export class BattleScene extends Phaser.Scene {
     const actions = this.match.update(
       time,
       this.slots.map((slot) => ({ x: slot.fighter.x, y: slot.fighter.y })),
-      PLACEHOLDER_STAGE.koBounds
+      this.stage.definition.koBounds
     );
     this.applyActions(actions);
     this.refreshHud();
     this.updateBlink(time);
     this.debugOverlay.draw(
       this.debugEnabled,
-      this.slots.map((slot) => slot.fighter.hurtbox.bounds(slot.fighter.x, slot.fighter.y))
+      this.slots.map((slot) => slot.fighter.hurtbox.bounds(slot.fighter.x, slot.fighter.y)),
+      this.stage.debugText(elapsed)
     );
   }
 
@@ -142,7 +153,7 @@ export class BattleScene extends Phaser.Scene {
         continue;
       }
       if (action.type === 'respawn') slot.fighter.resetDamage();
-      slot.fighter.place(slot.spawnX, slot.spawnY);
+      slot.fighter.place(slot.respawnX, slot.respawnY);
     }
 
     if (!this.match.isFinished) return;
@@ -182,9 +193,9 @@ export class BattleScene extends Phaser.Scene {
 
   private refreshHud(): void {
     this.hud.forEach((slot, index) => {
-      const spawn = SPAWNS[index];
+      const entry = ROSTER[index];
       const fighter = this.slots[index]?.fighter;
-      if (!spawn || !fighter) return;
+      if (!entry || !fighter) return;
       const stocks = this.match.stocksOf(index);
       const stars = '★'.repeat(stocks) + '☆'.repeat(STARTING_STOCKS - stocks);
       const percent = Math.round(fighter.damagePercent);
