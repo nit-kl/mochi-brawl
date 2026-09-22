@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
+import { NEUTRAL_ATTACK } from '../combat/AttackDefinition';
+import { resolveHits } from '../combat/resolveHits';
 import { createPlayerInput } from '../input/createPlayerInput';
 import { PLAYER_TWO_KEYBOARD_LAYOUT } from '../input/KeyboardInput';
 import type { PlayerInput } from '../input/PlayerInput';
 import { StockMatch, STARTING_STOCKS, type MatchAction } from '../match/StockMatch';
-import { PlaceholderPlayer } from '../player/PlaceholderPlayer';
+import { Fighter } from '../player/Fighter';
 
 const SPAWNS = [
   { x: 460, y: 470, color: 0x6aa6ff, label: '1P' },
@@ -11,7 +13,7 @@ const SPAWNS = [
 ] as const;
 
 type FighterSlot = {
-  player: PlaceholderPlayer;
+  fighter: Fighter;
   input: PlayerInput;
   spawnX: number;
   spawnY: number;
@@ -40,13 +42,14 @@ export class BattleScene extends Phaser.Scene {
     this.slots.length = 0;
 
     SPAWNS.forEach((spawn, index) => {
-      const player = new PlaceholderPlayer(this, spawn.x, spawn.y, spawn.color);
-      this.physics.add.collider(player.object, ground);
+      const id = (index + 1) as 1 | 2;
+      const fighter = new Fighter(this, id, spawn.x, spawn.y, spawn.color, NEUTRAL_ATTACK);
+      this.physics.add.collider(fighter.character.object, ground);
       const input = createPlayerInput(
         this,
         index === 0 ? { touch: true } : { layout: PLAYER_TWO_KEYBOARD_LAYOUT, touch: false }
       );
-      this.slots.push({ player, input, spawnX: spawn.x, spawnY: spawn.y });
+      this.slots.push({ fighter, input, spawnX: spawn.x, spawnY: spawn.y });
     });
 
     this.hud = SPAWNS.map((spawn, index) => {
@@ -87,11 +90,16 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    for (const slot of this.slots) slot.player.applyInput(slot.input.read());
+    for (const slot of this.slots) slot.fighter.update(slot.input.read(), time);
+
+    for (const hit of resolveHits(this.slots.map((slot) => slot.fighter))) {
+      console.log(`Player ${hit.attackerId} hit Player ${hit.targetId}`);
+      this.slots[hit.targetId - 1]?.fighter.onHit(time);
+    }
 
     const actions = this.match.update(
       time,
-      this.slots.map((slot) => slot.player.y)
+      this.slots.map((slot) => slot.fighter.y)
     );
     this.applyActions(actions);
     this.refreshHud();
@@ -103,10 +111,10 @@ export class BattleScene extends Phaser.Scene {
       const slot = this.slots[action.index];
       if (!slot) continue;
       if (action.type === 'eliminated') {
-        slot.player.eliminate();
+        slot.fighter.eliminate();
         continue;
       }
-      slot.player.place(slot.spawnX, slot.spawnY);
+      slot.fighter.place(slot.spawnX, slot.spawnY);
     }
 
     if (!this.match.isFinished) return;
@@ -133,7 +141,7 @@ export class BattleScene extends Phaser.Scene {
     this.slots.forEach((slot, index) => {
       if (this.match.stocksOf(index) <= 0) return;
       const visiblePhase = Math.floor(time / 120) % 2 === 0;
-      slot.player.setAlpha(this.match.isInvulnerable(index, time) && !visiblePhase ? 0.35 : 1);
+      slot.fighter.setAlpha(this.match.isInvulnerable(index, time) && !visiblePhase ? 0.35 : 1);
     });
   }
 }

@@ -6,9 +6,11 @@ const STICK_RADIUS = 52;
 const STICK_GRAB_RADIUS = 72;
 const KNOB_RADIUS = 22;
 const JUMP_RADIUS = 46;
+const ATTACK_RADIUS = 42;
 const EDGE = 36;
 const DEADZONE = 0.18;
 const JUMP_FILL_ALPHA = 0.78;
+const ATTACK_FILL_ALPHA = 0.9;
 const TOUCH_LAYOUT_QUERY = '(pointer: coarse) and (hover: none)';
 
 /** マウス操作のPCでは false。スマホの横持ちだけ true。 */
@@ -21,20 +23,30 @@ export class TouchInput implements InputSource {
   private readonly ui: Phaser.GameObjects.Container;
   private readonly knob: Phaser.GameObjects.Arc;
   private readonly jumpButton: Phaser.GameObjects.Arc;
+  private readonly attackButton: Phaser.GameObjects.Arc;
   private readonly media: MediaQueryList;
   private readonly stickX: number;
   private readonly stickY: number;
   private readonly jumpX: number;
   private readonly jumpY: number;
+  private readonly attackX: number;
+  private readonly attackY: number;
   private enabled: boolean;
   private moveX = 0;
   private moveY = 0;
   private jumpQueued = false;
+  private attackQueued = false;
   private stickPointerId: number | null = null;
   private destroyed = false;
 
   private readonly onPointerDown = (pointer: Phaser.Input.Pointer): void => {
     if (!this.enabled) return;
+
+    if (distance(pointer.x, pointer.y, this.attackX, this.attackY) <= ATTACK_RADIUS) {
+      this.attackQueued = true;
+      this.attackButton.setFillStyle(0xffd0c4, 1);
+      return;
+    }
 
     if (distance(pointer.x, pointer.y, this.jumpX, this.jumpY) <= JUMP_RADIUS) {
       this.jumpQueued = true;
@@ -59,6 +71,7 @@ export class TouchInput implements InputSource {
   private readonly onPointerUp = (pointer: Phaser.Input.Pointer): void => {
     if (pointer.id === this.stickPointerId) this.resetStick();
     this.jumpButton.setFillStyle(0xffffff, JUMP_FILL_ALPHA);
+    this.attackButton.setFillStyle(0xff8d7a, ATTACK_FILL_ALPHA);
   };
 
   private readonly onMediaChange = (): void => {
@@ -67,7 +80,7 @@ export class TouchInput implements InputSource {
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
-    scene.input.addPointer(2);
+    scene.input.addPointer(3);
 
     const width = scene.scale.gameSize.width;
     const height = scene.scale.gameSize.height;
@@ -75,12 +88,16 @@ export class TouchInput implements InputSource {
     this.stickY = height - EDGE - STICK_RADIUS;
     this.jumpX = width - EDGE - JUMP_RADIUS;
     this.jumpY = this.stickY;
+    this.attackX = this.jumpX;
+    this.attackY = this.jumpY - JUMP_RADIUS - 18 - ATTACK_RADIUS;
 
     const base = scene.add.circle(this.stickX, this.stickY, STICK_RADIUS, 0xffffff, 0.2);
     base.setStrokeStyle(3, 0xffffff, 0.75);
     this.knob = scene.add.circle(this.stickX, this.stickY, KNOB_RADIUS, 0xffffff, 0.85);
     this.jumpButton = scene.add.circle(this.jumpX, this.jumpY, JUMP_RADIUS, 0xffffff, JUMP_FILL_ALPHA);
     this.jumpButton.setStrokeStyle(3, 0xffffff, 0.9);
+    this.attackButton = scene.add.circle(this.attackX, this.attackY, ATTACK_RADIUS, 0xff8d7a, ATTACK_FILL_ALPHA);
+    this.attackButton.setStrokeStyle(3, 0xffffff, 0.9);
     const jumpLabel = scene.add
       .text(this.jumpX, this.jumpY, 'ジャンプ', {
         fontFamily: 'sans-serif',
@@ -88,8 +105,15 @@ export class TouchInput implements InputSource {
         color: '#222222'
       })
       .setOrigin(0.5);
+    const attackLabel = scene.add
+      .text(this.attackX, this.attackY, '攻撃', {
+        fontFamily: 'sans-serif',
+        fontSize: '15px',
+        color: '#222222'
+      })
+      .setOrigin(0.5);
 
-    this.ui = scene.add.container(0, 0, [base, this.knob, this.jumpButton, jumpLabel]);
+    this.ui = scene.add.container(0, 0, [base, this.knob, this.jumpButton, jumpLabel, this.attackButton, attackLabel]);
     this.ui.setScrollFactor(0);
     this.ui.setDepth(1000);
 
@@ -108,12 +132,14 @@ export class TouchInput implements InputSource {
     if (!this.enabled) return neutralInput();
 
     const jump = this.jumpQueued;
+    const attack = this.attackQueued;
     this.jumpQueued = false;
+    this.attackQueued = false;
     return {
       moveX: this.moveX,
       moveY: this.moveY,
       jump,
-      attack: false,
+      attack,
       special: false,
       dodge: false
     };
@@ -136,7 +162,9 @@ export class TouchInput implements InputSource {
     if (!enabled) {
       this.resetStick();
       this.jumpQueued = false;
+      this.attackQueued = false;
       this.jumpButton.setFillStyle(0xffffff, JUMP_FILL_ALPHA);
+      this.attackButton.setFillStyle(0xff8d7a, ATTACK_FILL_ALPHA);
     }
   }
 
