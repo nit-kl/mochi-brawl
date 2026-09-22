@@ -70,6 +70,7 @@ export const MOCHIMARU: CharacterDefinition = {
   maxJumps: 2,
   gravityScale: 1,
   weight: 1,
+  look: { visualWidth: 56, visualHeight: 72, markerScale: 1 },
   normalAttack: PECHI,
   specialAttack: GURUGURU,
   upSpecial: BALLOON

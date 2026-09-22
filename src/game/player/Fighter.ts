@@ -34,7 +34,7 @@ export class Fighter {
     this.stats = stats;
     this.jumpsRemaining = stats.maxJumps;
     this.upSpecialRemaining = stats.upSpecial ? 1 : 0;
-    this.character = new PlaceholderPlayer(scene, x, y, color, stats.gravityScale);
+    this.character = new PlaceholderPlayer(scene, x, y, color, stats.gravityScale, stats.look);
     this.attack = new AttackController(scene, stats.normalAttack);
   }
 

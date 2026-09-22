@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { MOCHIMARU } from '../characters/mochimaru';
-import { PLACEHOLDER_CHARACTER } from '../characters/placeholderCharacter';
+import { POTECHI } from '../characters/potechi';
 import { createHitResult } from '../combat/HitResult';
 import { resolveHits } from '../combat/resolveHits';
 import { CombatDebugOverlay } from '../debug/CombatDebugOverlay';
@@ -13,7 +13,7 @@ import { PLACEHOLDER_STAGE } from '../stage/PlaceholderStage';
 
 const SPAWNS = [
   { x: 460, y: 470, color: 0x6aa6ff, character: MOCHIMARU },
-  { x: 820, y: 470, color: 0xf08a5d, character: PLACEHOLDER_CHARACTER }
+  { x: 820, y: 470, color: 0xf08a5d, character: POTECHI }
 ] as const;
 
 type FighterSlot = {

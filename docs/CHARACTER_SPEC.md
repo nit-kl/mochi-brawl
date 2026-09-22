@@ -100,21 +100,54 @@
 - 攻撃力: 高い
 - 復帰: やや弱い
 
-### 必殺技
+### 現在の実装値
 
-詳細は実装前に確定する。
-方向性として、もちまると重複する突進技だけに依存しない。
+`CharacterDefinition`（`src/game/characters/potechi.ts`）。2P はこの定義を使う。
 
----
+- displayName: ぽてち
+- moveSpeed: 240
+- airMoveAcceleration: 2800
+- jumpVelocity: -540
+- maxJumps: 2
+- gravityScale: 1.1
+- weight: 1.4
+- 仮表示: 幅 76、高さ 90。物理ボディは 56×72 のまま
 
-## 2P の仮キャラ
+どすっ:
 
-Milestone 06 まで、2P はぽてちに置き換えない。名前表示は「2P」。
+- damage: 9
+- startup / active / recovery: 110 / 100 / 220 ms
+- baseKnockback: 380
+- knockbackScaling: 9
+- knockbackAngleDegrees: 30
+- knockbackLockMs: 420
+- canMoveDuringAttack: true
 
-- maxJumps: 1
-- weight: 1.0
-- 通常攻撃は Milestone 04 の仮攻撃のまま（damage 8、baseKnockback 320、knockbackScaling 8、角度 30 度、knockbackLockMs 380）
-- 必殺と上必殺はなし
+どっすーん！:
+
+- damage: 14
+- startup: 180 ms。その後、前方 260・上 -480 で跳ぶ
+- 140 ms 後に落下速度 980。着地してから active 120 ms
+- 開始から 800 ms 以内に着地しない場合は Hitbox を出さず、通常の空中状態に戻る
+- recovery: 320 ms
+- 着地 Hitbox: 幅 108、高さ 34、足元
+- baseKnockback: 520
+- knockbackScaling: 10
+- knockbackAngleDegrees: 35
+- 同じ相手へは 1 ヒット
+
+ばねジャンプ:
+
+- damage: 6
+- startup / active / recovery: 100 / 140 / 240 ms
+- 上昇速度: -850
+- 横操作: 115
+- baseKnockback: 220
+- knockbackScaling: 4
+- knockbackAngleDegrees: 80
+- 空中では着地まで 1 回
+
+方向別の通常攻撃と 3 段コンボはまだない。
 
 ## 吹き飛ばしと重量
 
