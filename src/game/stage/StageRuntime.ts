@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { ShrinkPhase, StageDefinition } from './StageDefinition';
 import { resolveShrinkPhases } from './shrinkSchedule';
+import { StageArtView } from './StageArtView';
 
 type LivePlatform = {
   id: string;
@@ -26,6 +27,7 @@ export class StageRuntime {
   private readonly phases: ShrinkPhase[];
   private readonly platforms: LivePlatform[];
   private readonly warning: Phaser.GameObjects.Text;
+  private readonly art: StageArtView;
   private mainFinished = false;
 
   constructor(private readonly scene: Phaser.Scene, definition: StageDefinition) {
@@ -33,7 +35,7 @@ export class StageRuntime {
     this.phases = resolveShrinkPhases(definition);
     this.platforms = definition.platforms.map((platform) => {
       const rect = scene.add.rectangle(platform.x, platform.y, platform.width, platform.height, platform.color);
-      rect.setDepth(0);
+      rect.setVisible(false);
       scene.physics.add.existing(rect, true);
       return {
         id: platform.id,
@@ -47,6 +49,9 @@ export class StageRuntime {
         gone: false
       };
     });
+    const main = this.platforms.find((platform) => platform.kind === 'main');
+    this.art = new StageArtView(scene, main?.width ?? 820);
+    for (const platform of this.platforms) this.syncArt(platform, 1);
     this.warning = scene.add
       .text(640, 112, '', {
         fontFamily: 'sans-serif',
@@ -109,8 +114,8 @@ export class StageRuntime {
       const drop = t * 22;
       const blink = Math.floor(elapsedMs / 90) % 2 === 0 ? 1 : 0.3;
       platform.rect.setPosition(platform.baseX + shake, platform.baseY + drop);
-      platform.rect.setAlpha((1 - t) * blink);
       platform.body.updateFromGameObject();
+      this.syncArt(platform, (1 - t) * blink);
     }
   }
 
@@ -125,6 +130,7 @@ export class StageRuntime {
     if (t < 1 || !this.mainFinished) {
       main.rect.setSize(width, main.height);
       main.body.updateFromGameObject();
+      this.syncArt(main, 1);
       if (t >= 1) this.mainFinished = true;
     }
   }
@@ -146,6 +152,15 @@ export class StageRuntime {
     platform.body.enable = false;
     platform.rect.setVisible(false);
     platform.rect.setAlpha(0);
+    this.art.hideSide(platform.id);
+  }
+
+  private syncArt(platform: LivePlatform, alpha: number): void {
+    if (platform.kind === 'main') {
+      this.art.syncMain(platform.rect.x, platform.rect.y, platform.rect.width, platform.height);
+      return;
+    }
+    this.art.syncSide(platform.id, platform.rect.x, platform.rect.y, platform.height, alpha, !platform.gone);
   }
 
   private phase(id: ShrinkPhase['id']): ShrinkPhase | undefined {

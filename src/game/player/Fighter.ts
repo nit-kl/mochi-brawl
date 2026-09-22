@@ -11,7 +11,8 @@ import { PlaceholderPlayer } from './PlaceholderPlayer';
 
 const BODY_WIDTH = 56;
 const BODY_HEIGHT = 72;
-const HIT_FLASH_MS = 160;
+/** 被弾の白い点滅。判定や硬直時間とは別。 */
+const HIT_FLASH_MS = 100;
 
 /** 1人分のキャラクター。入力・攻撃・被弾判定を組み立てる。 */
 export class Fighter {

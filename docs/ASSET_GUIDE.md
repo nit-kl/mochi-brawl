@@ -88,13 +88,18 @@ public/assets/
 
 ## 5. ステージ素材
 
-背景とコリジョン用足場を分離する。
+`public/assets/stages/ohirune-meadow/`
 
-- background: 遠景・中景・前景
-- platforms: 実際の足場画像
-- collision: コード側の矩形/ポリゴンで管理
+| ファイル | 画像 | 使い方 |
+| --- | --- | --- |
+| `background.png` | 1672×941 RGB。透過なし。画面比はほぼ 16:9 | 1280×720 の背面。判定なし |
+| `main_platform_left.png` | 2172×724 RGBA。草の上面は y=218 付近で水平 | メイン足場。左右端を残し、中央を切り詰める |
+| `main_platform_center.png` | 1448×1086 RGBA。上面が 217〜355 で傾く。四周に余白 | 未使用。平らな帯と切れ目が合わない |
+| `main_platform_right.png` | 1448×1086 RGBA。上面が 248〜366 で傾く | 未使用。同上 |
+| `floating_platform_left.png` | 1448×1086 RGBA。中央の草は y=403 | 左の浮遊足場 |
+| `floating_platform_right.png` | 1448×1086 RGBA。中央の草は y=409。右端の葉が画像端に触れる | 右の浮遊足場 |
 
-縮小ステージは画像差し替えだけに依存せず、足場オブジェクトの削除/縮小で実装する。
+当たり判定はコードの矩形のまま。縮小は画像の差し替えではなく、中央の表示幅を短くする。
 
 ## 6. UI
 

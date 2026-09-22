@@ -10,7 +10,11 @@ import type { PlayerInput } from '../input/PlayerInput';
 import { StockMatch, STARTING_STOCKS, type MatchAction } from '../match/StockMatch';
 import { Fighter } from '../player/Fighter';
 import { OHIRUNE_MEADOW } from '../stage/ohiruneMeadow';
+import { preloadOhiruneStageArt } from '../stage/StageArtView';
 import { StageRuntime } from '../stage/StageRuntime';
+import { BattleHud } from '../ui/BattleHud';
+import { HitEffectView } from '../ui/HitEffectView';
+import { MatchResultView } from '../ui/MatchResultView';
 import { MobileHudLayout } from '../ui/MobileHudLayout';
 import { ensureCharacterAnimations, preloadCharacterSprites } from '../view/SpriteCharacterView';
 
@@ -26,16 +30,12 @@ type FighterSlot = {
   respawnY: number;
 };
 
-type HudSlot = {
-  info: Phaser.GameObjects.Text;
-  percent: Phaser.GameObjects.Text;
-};
-
 export class BattleScene extends Phaser.Scene {
   private readonly slots: FighterSlot[] = [];
   private match!: StockMatch;
-  private hud: HudSlot[] = [];
-  private resultText!: Phaser.GameObjects.Text;
+  private hud!: BattleHud;
+  private hitEffects!: HitEffectView;
+  private resultView!: MatchResultView;
   private restartKey: Phaser.Input.Keyboard.Key | null = null;
   private debugKey: Phaser.Input.Keyboard.Key | null = null;
   private debugEnabled = false;
@@ -48,6 +48,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   preload(): void {
+    preloadOhiruneStageArt(this);
     for (const entry of ROSTER) {
       if (entry.character.spriteSet) preloadCharacterSprites(this, entry.character.spriteSet);
     }
@@ -80,22 +81,15 @@ export class BattleScene extends Phaser.Scene {
     });
     this.stage.bind(this.slots.map((slot) => slot.fighter.character.object));
 
-    this.hud = ROSTER.map((entry, index) => this.createHud(entry.character.displayName, index));
-    new MobileHudLayout(this, this.hud);
+    this.hud = new BattleHud(this, [
+      { name: 'もちまる', marker: 0x4c8dff, nameColor: '#1d4e89' },
+      { name: 'ぽてち', marker: 0xf08a5d, nameColor: '#8a3d16' }
+    ]);
+    new MobileHudLayout(this, this.hud.slots);
+    this.hitEffects = new HitEffectView(this);
+    this.resultView = new MatchResultView(this);
     this.refreshHud();
     this.debugOverlay = new CombatDebugOverlay(this, OHIRUNE_MEADOW.koBounds);
-
-    this.resultText = this.add
-      .text(640, 250, '', {
-        fontFamily: 'sans-serif',
-        fontSize: '40px',
-        color: '#222222',
-        align: 'center'
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(2000)
-      .setVisible(false);
 
     this.restartKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.R) ?? null;
     this.debugKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.F3) ?? null;
@@ -135,6 +129,7 @@ export class BattleScene extends Phaser.Scene {
         attacker.character.facing
       );
       defender.applyHitResult(result, time);
+      this.hitEffects.spawn((attacker.x + defender.x) / 2, (attacker.y + defender.y) / 2, result.attack.visual, time);
       console.log(
         `${attacker.displayName} ${result.attack.id} hit ${defender.displayName}: ${defender.damagePercent}% knockback ${Math.round(result.knockback)}`
       );
@@ -145,8 +140,10 @@ export class BattleScene extends Phaser.Scene {
       this.slots.map((slot) => ({ x: slot.fighter.x, y: slot.fighter.y })),
       this.stage.definition.koBounds
     );
-    this.applyActions(actions);
+    this.applyActions(actions, time);
     this.refreshHud();
+    this.hitEffects.update(time);
+    this.resultView.update(time);
     this.updateBlink(time);
     for (const slot of this.slots) slot.fighter.attack.hitbox.setDebugVisible(this.debugEnabled);
     const animationLine = this.slots
@@ -161,10 +158,13 @@ export class BattleScene extends Phaser.Scene {
     );
   }
 
-  private applyActions(actions: MatchAction[]): void {
+  private applyActions(actions: MatchAction[], time: number): void {
     for (const action of actions) {
       const slot = this.slots[action.index];
       if (!slot) continue;
+      if (action.type === 'eliminated' || action.type === 'respawn') {
+        this.resultView.showKo(slot.fighter.x, slot.fighter.y, time);
+      }
       if (action.type === 'eliminated') {
         slot.fighter.eliminate();
         continue;
@@ -177,48 +177,15 @@ export class BattleScene extends Phaser.Scene {
 
     const winner = this.match.winner;
     const winnerName = winner === null ? null : this.slots[winner - 1]?.fighter.displayName;
-    const headline = winnerName ? `${winnerName} の勝ち` : '引き分け';
-    this.resultText.setText(`${headline}\nRキー / タップで再戦`);
-    this.resultText.setVisible(true);
+    this.resultView.showWinner(winnerName);
     this.input.once(Phaser.Input.Events.POINTER_DOWN, () => {
       if (this.match.isFinished) this.scene.restart();
     });
   }
 
-  private createHud(label: string, index: number): HudSlot {
-    const alignRight = index === 1;
-    const color = index === 0 ? '#1d4e89' : '#8a3d16';
-    const info = this.add.text(alignRight ? 1256 : 24, 16, label, {
-      fontFamily: 'sans-serif',
-      fontSize: '26px',
-      color,
-      align: alignRight ? 'right' : 'left',
-      lineSpacing: 4
-    });
-    const percent = this.add.text(alignRight ? 1256 : 24, 92, '0%', {
-      fontFamily: 'sans-serif',
-      fontSize: '34px',
-      color
-    });
-    for (const text of [info, percent]) {
-      text.setOrigin(alignRight ? 1 : 0, 0);
-      text.setScrollFactor(0);
-      text.setDepth(1500);
-    }
-    return { info, percent };
-  }
-
   private refreshHud(): void {
-    this.hud.forEach((slot, index) => {
-      const entry = ROSTER[index];
-      const fighter = this.slots[index]?.fighter;
-      if (!entry || !fighter) return;
-      const stocks = this.match.stocksOf(index);
-      const stars = '★'.repeat(stocks) + '☆'.repeat(STARTING_STOCKS - stocks);
-      const percent = Math.round(fighter.damagePercent);
-      slot.info.setText(`${fighter.displayName}\n${stars}`);
-      slot.percent.setText(`${percent}%`);
-      slot.percent.setColor(percentColor(percent, index));
+    this.slots.forEach((slot, index) => {
+      this.hud.refresh(index, this.match.stocksOf(index), Math.round(slot.fighter.damagePercent));
     });
   }
 
@@ -229,10 +196,4 @@ export class BattleScene extends Phaser.Scene {
       slot.fighter.setAlpha(this.match.isInvulnerable(index, time) && !visiblePhase ? 0.35 : 1);
     });
   }
-}
-
-function percentColor(percent: number, index: number): string {
-  if (percent >= 100) return '#d01212';
-  if (percent >= 50) return '#e07a00';
-  return index === 0 ? '#1d4e89' : '#8a3d16';
 }

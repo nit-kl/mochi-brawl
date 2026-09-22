@@ -10,7 +10,7 @@
 
 ## 実行
 
-`StageRuntime` が定義から矩形と Static Body を作る。`BattleScene` は Fighter の物理体を `bind` する。
+`StageRuntime` が定義から矩形と Static Body を作る。矩形は非表示で、絵は `StageArtView` が同じ位置に重ねる。`BattleScene` は Fighter の物理体を `bind` する。
 
 毎フレーム `update(elapsedMs)` が、今のフェーズに応じて足場を更新する。
 

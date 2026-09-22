@@ -2,13 +2,12 @@ import Phaser from 'phaser';
 import { isTouchLayout, measureGameFrame, watchDeviceLayout } from './deviceLayout';
 
 type HudSlot = {
-  info: Phaser.GameObjects.Text;
-  percent: Phaser.GameObjects.Text;
+  root: Phaser.GameObjects.Container;
 };
 
-const DESKTOP = { leftX: 24, rightX: 1256, top: 16, percentGap: 76 };
+const DESKTOP = { leftX: 24, rightX: 1256, top: 16 };
 
-/** HUD の文言は変えず、タッチ端末では Safe Area の内側へ寄せる。 */
+/** HUD パネルを、タッチ端末では Safe Area の内側へ寄せる。 */
 export class MobileHudLayout {
   private readonly onChange = (): void => {
     this.apply();
@@ -38,16 +37,7 @@ export class MobileHudLayout {
   }
 
   private place(leftX: number, rightX: number, top: number): void {
-    const percentY = top + DESKTOP.percentGap;
-    const left = this.slots[0];
-    const right = this.slots[1];
-    if (left) {
-      left.info.setPosition(leftX, top);
-      left.percent.setPosition(leftX, percentY);
-    }
-    if (right) {
-      right.info.setPosition(rightX, top);
-      right.percent.setPosition(rightX, percentY);
-    }
+    this.slots[0]?.root.setPosition(leftX, top);
+    this.slots[1]?.root.setPosition(rightX, top);
   }
 }
