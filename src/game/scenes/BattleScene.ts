@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { NEUTRAL_ATTACK } from '../combat/AttackDefinition';
+import { MOCHIMARU } from '../characters/mochimaru';
+import { PLACEHOLDER_CHARACTER } from '../characters/placeholderCharacter';
 import { createHitResult } from '../combat/HitResult';
 import { resolveHits } from '../combat/resolveHits';
 import { CombatDebugOverlay } from '../debug/CombatDebugOverlay';
@@ -11,8 +12,8 @@ import { Fighter } from '../player/Fighter';
 import { PLACEHOLDER_STAGE } from '../stage/PlaceholderStage';
 
 const SPAWNS = [
-  { x: 460, y: 470, color: 0x6aa6ff, label: '1P' },
-  { x: 820, y: 470, color: 0xf08a5d, label: '2P' }
+  { x: 460, y: 470, color: 0x6aa6ff, character: MOCHIMARU },
+  { x: 820, y: 470, color: 0xf08a5d, character: PLACEHOLDER_CHARACTER }
 ] as const;
 
 type FighterSlot = {
@@ -54,7 +55,7 @@ export class BattleScene extends Phaser.Scene {
 
     SPAWNS.forEach((spawn, index) => {
       const id = (index + 1) as 1 | 2;
-      const fighter = new Fighter(this, id, spawn.x, spawn.y, spawn.color, NEUTRAL_ATTACK);
+      const fighter = new Fighter(this, id, spawn.x, spawn.y, spawn.color, spawn.character);
       this.physics.add.collider(fighter.character.object, ground);
       const input = createPlayerInput(
         this,
@@ -63,7 +64,7 @@ export class BattleScene extends Phaser.Scene {
       this.slots.push({ fighter, input, spawnX: spawn.x, spawnY: spawn.y });
     });
 
-    this.hud = SPAWNS.map((spawn, index) => this.createHud(spawn.label, index));
+    this.hud = SPAWNS.map((spawn, index) => this.createHud(spawn.character.displayName, index));
     this.refreshHud();
     this.debugOverlay = new CombatDebugOverlay(this, PLACEHOLDER_STAGE.koBounds);
 
@@ -107,11 +108,12 @@ export class BattleScene extends Phaser.Scene {
         defender.id,
         attacker.attack.attackDefinition,
         defender.damagePercent,
+        defender.weight,
         attacker.character.facing
       );
       defender.applyHitResult(result, time);
       console.log(
-        `Player ${result.attackerId} hit Player ${result.defenderId}: ${defender.damagePercent}% knockback ${Math.round(result.knockback)}`
+        `${attacker.displayName} ${result.attack.id} hit ${defender.displayName}: ${defender.damagePercent}% knockback ${Math.round(result.knockback)}`
       );
     }
 
@@ -144,7 +146,8 @@ export class BattleScene extends Phaser.Scene {
     if (!this.match.isFinished) return;
 
     const winner = this.match.winner;
-    const headline = winner === null ? '引き分け' : `${winner}P の勝ち`;
+    const winnerName = winner === null ? null : this.slots[winner - 1]?.fighter.displayName;
+    const headline = winnerName ? `${winnerName} の勝ち` : '引き分け';
     this.resultText.setText(`${headline}\nRキー / タップで再戦`);
     this.resultText.setVisible(true);
     this.input.once(Phaser.Input.Events.POINTER_DOWN, () => {
@@ -183,7 +186,7 @@ export class BattleScene extends Phaser.Scene {
       const stocks = this.match.stocksOf(index);
       const stars = '★'.repeat(stocks) + '☆'.repeat(STARTING_STOCKS - stocks);
       const percent = Math.round(fighter.damagePercent);
-      slot.info.setText(`${spawn.label}\n${stars}`);
+      slot.info.setText(`${fighter.displayName}\n${stars}`);
       slot.percent.setText(`${percent}%`);
       slot.percent.setColor(percentColor(percent, index));
     });

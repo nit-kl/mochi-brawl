@@ -10,7 +10,7 @@ export class Hitbox {
   private centerX = 0;
   private centerY = 0;
 
-  constructor(scene: Phaser.Scene, private readonly definition: AttackDefinition) {
+  constructor(scene: Phaser.Scene, private definition: AttackDefinition) {
     const { width, height } = definition.hitbox;
     this.visual = scene.add.rectangle(0, 0, width, height, 0xffe14a, 0.7);
     this.visual.setStrokeStyle(2, 0xc48a00);
@@ -20,6 +20,11 @@ export class Hitbox {
 
   get isEnabled(): boolean {
     return this.enabled;
+  }
+
+  use(definition: AttackDefinition): void {
+    this.definition = definition;
+    this.visual.setDisplaySize(definition.hitbox.width, definition.hitbox.height);
   }
 
   begin(): void {

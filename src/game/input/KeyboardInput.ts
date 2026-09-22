@@ -7,8 +7,10 @@ export type KeyboardLayout = {
   left: number[];
   right: number[];
   jump: number[];
+  up: number[];
   down: number[];
   attack: number[];
+  special: number[];
 };
 
 const codes = Phaser.Input.Keyboard.KeyCodes;
@@ -17,16 +19,20 @@ export const PLAYER_ONE_KEYBOARD_LAYOUT: KeyboardLayout = {
   left: [codes.A],
   right: [codes.D],
   jump: [codes.W, codes.SPACE],
+  up: [codes.W],
   down: [codes.S],
-  attack: [codes.J]
+  attack: [codes.J],
+  special: [codes.K]
 };
 
 export const PLAYER_TWO_KEYBOARD_LAYOUT: KeyboardLayout = {
   left: [codes.LEFT],
   right: [codes.RIGHT],
   jump: [codes.UP],
+  up: [codes.UP],
   down: [codes.DOWN],
-  attack: [codes.ENTER]
+  attack: [codes.ENTER],
+  special: [codes.PERIOD]
 };
 
 export class KeyboardInput implements InputSource {
@@ -34,8 +40,10 @@ export class KeyboardInput implements InputSource {
   private readonly left: Phaser.Input.Keyboard.Key[];
   private readonly right: Phaser.Input.Keyboard.Key[];
   private readonly jump: Phaser.Input.Keyboard.Key[];
+  private readonly up: Phaser.Input.Keyboard.Key[];
   private readonly down: Phaser.Input.Keyboard.Key[];
   private readonly attack: Phaser.Input.Keyboard.Key[];
+  private readonly special: Phaser.Input.Keyboard.Key[];
   private readonly captured: number[];
   private destroyed = false;
 
@@ -46,8 +54,10 @@ export class KeyboardInput implements InputSource {
       this.left = [];
       this.right = [];
       this.jump = [];
+      this.up = [];
       this.down = [];
       this.attack = [];
+      this.special = [];
       this.captured = [];
       return;
     }
@@ -55,9 +65,19 @@ export class KeyboardInput implements InputSource {
     this.left = this.bind(keyboard, layout.left);
     this.right = this.bind(keyboard, layout.right);
     this.jump = this.bind(keyboard, layout.jump);
+    this.up = this.bind(keyboard, layout.up);
     this.down = this.bind(keyboard, layout.down);
     this.attack = this.bind(keyboard, layout.attack);
-    this.captured = [...layout.left, ...layout.right, ...layout.jump, ...layout.down, ...layout.attack];
+    this.special = this.bind(keyboard, layout.special);
+    this.captured = [
+      ...layout.left,
+      ...layout.right,
+      ...layout.jump,
+      ...layout.up,
+      ...layout.down,
+      ...layout.attack,
+      ...layout.special
+    ];
     keyboard.addCapture(this.captured);
   }
 
@@ -76,13 +96,21 @@ export class KeyboardInput implements InputSource {
     for (const key of this.attack) {
       if (Phaser.Input.Keyboard.JustDown(key)) attack = true;
     }
+    let special = false;
+    for (const key of this.special) {
+      if (Phaser.Input.Keyboard.JustDown(key)) special = true;
+    }
+
+    let moveY = 0;
+    if (this.up.some((key) => key.isDown)) moveY -= 1;
+    if (this.down.some((key) => key.isDown)) moveY += 1;
 
     return {
       moveX,
-      moveY: this.down.some((key) => key.isDown) ? 1 : 0,
+      moveY,
       jump,
       attack,
-      special: false,
+      special,
       dodge: false
     };
   }
@@ -91,7 +119,9 @@ export class KeyboardInput implements InputSource {
     if (this.destroyed || !this.keyboard) return;
     this.destroyed = true;
     this.keyboard.removeCapture(this.captured);
-    for (const key of [...this.left, ...this.right, ...this.jump, ...this.down, ...this.attack]) {
+    const keys = [...this.left, ...this.right, ...this.jump, ...this.up, ...this.down, ...this.attack, ...this.special];
+    for (const key of keys) {
+      if (!this.keyboard.keys?.includes(key)) continue;
       this.keyboard.removeKey(key);
     }
   }

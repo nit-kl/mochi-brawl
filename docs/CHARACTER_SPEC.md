@@ -31,6 +31,51 @@
 - 攻撃力: 標準
 - 復帰: 高い
 
+### 現在の実装値
+
+`CharacterDefinition`（`src/game/characters/mochimaru.ts`）。
+
+- displayName: もちまる
+- moveSpeed: 280
+- airMoveAcceleration: 3600
+- jumpVelocity: -620
+- maxJumps: 2
+- gravityScale: 1
+- weight: 1.0
+
+ぺち:
+
+- damage: 6
+- startup / active / recovery: 70 / 90 / 150 ms
+- baseKnockback: 280
+- knockbackScaling: 7
+- knockbackAngleDegrees: 28
+- knockbackLockMs: 360
+- canMoveDuringAttack: true
+
+ぐるぐる突進:
+
+- damage: 10
+- startup / active / recovery: 120 / 360 / 250 ms
+- 突進速度: 700
+- baseKnockback: 440
+- knockbackScaling: 9
+- knockbackAngleDegrees: 18
+- canMoveDuringAttack: false
+
+ふうせんジャンプ:
+
+- damage: 4
+- startup / active / recovery: 80 / 140 / 200 ms
+- 上昇速度: -980
+- 横操作: 180
+- baseKnockback: 150
+- knockbackScaling: 3
+- knockbackAngleDegrees: 80
+- 空中では着地まで 1 回
+
+3 段コンボ、方向別の通常攻撃、風船の破裂はまだない。上のアクション一覧のうち、実装しているのはぺち、ぐるぐる突進、ふうせんジャンプ。
+
 ---
 
 ## ぽてち
@@ -62,15 +107,20 @@
 
 ---
 
-## 現在の共通通常攻撃
+## 2P の仮キャラ
 
-Milestone 04 時点では、もちまるとぽてちの性能差はまだない。両者とも次の仮通常攻撃を使う。固有技は Milestone 05 と 06。
+Milestone 06 まで、2P はぽてちに置き換えない。名前表示は「2P」。
 
-- damage: 8
-- baseKnockback: 320
-- knockbackScaling: 8
-- knockbackAngleDegrees: 30（前方水平から上）
-- knockbackLockMs: 380
+- maxJumps: 1
+- weight: 1.0
+- 通常攻撃は Milestone 04 の仮攻撃のまま（damage 8、baseKnockback 320、knockbackScaling 8、角度 30 度、knockbackLockMs 380）
+- 必殺と上必殺はなし
 
-吹き飛ばしの強さは `baseKnockback + ヒット後のダメージ% × knockbackScaling`。
+## 吹き飛ばしと重量
+
+```
+knockback = (baseKnockback + (被弾前% + damage) × knockbackScaling) / weight
+```
+
+weight 1.0 が標準。小さいほど飛びやすく、大きいほど飛びにくい。
 `knockbackLockMs` は操作で速度を上書きしない時間で、終わっても横速度は 0 にしない。空中では減衰し、着地すると通常の移動に戻る。

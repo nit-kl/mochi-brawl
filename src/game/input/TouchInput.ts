@@ -7,10 +7,13 @@ const STICK_GRAB_RADIUS = 72;
 const KNOB_RADIUS = 22;
 const JUMP_RADIUS = 46;
 const ATTACK_RADIUS = 42;
+const SPECIAL_RADIUS = 40;
 const EDGE = 36;
+const BUTTON_GAP = 14;
 const DEADZONE = 0.18;
 const JUMP_FILL_ALPHA = 0.78;
 const ATTACK_FILL_ALPHA = 0.9;
+const SPECIAL_FILL_ALPHA = 0.92;
 const TOUCH_LAYOUT_QUERY = '(pointer: coarse) and (hover: none)';
 
 /** マウス操作のPCでは false。スマホの横持ちだけ true。 */
@@ -24,6 +27,7 @@ export class TouchInput implements InputSource {
   private readonly knob: Phaser.GameObjects.Arc;
   private readonly jumpButton: Phaser.GameObjects.Arc;
   private readonly attackButton: Phaser.GameObjects.Arc;
+  private readonly specialButton: Phaser.GameObjects.Arc;
   private readonly media: MediaQueryList;
   private readonly stickX: number;
   private readonly stickY: number;
@@ -31,11 +35,14 @@ export class TouchInput implements InputSource {
   private readonly jumpY: number;
   private readonly attackX: number;
   private readonly attackY: number;
+  private readonly specialX: number;
+  private readonly specialY: number;
   private enabled: boolean;
   private moveX = 0;
   private moveY = 0;
   private jumpQueued = false;
   private attackQueued = false;
+  private specialQueued = false;
   private stickPointerId: number | null = null;
   private destroyed = false;
 
@@ -45,6 +52,12 @@ export class TouchInput implements InputSource {
     if (distance(pointer.x, pointer.y, this.attackX, this.attackY) <= ATTACK_RADIUS) {
       this.attackQueued = true;
       this.attackButton.setFillStyle(0xffd0c4, 1);
+      return;
+    }
+
+    if (distance(pointer.x, pointer.y, this.specialX, this.specialY) <= SPECIAL_RADIUS) {
+      this.specialQueued = true;
+      this.specialButton.setFillStyle(0xd7c4ff, 1);
       return;
     }
 
@@ -72,6 +85,7 @@ export class TouchInput implements InputSource {
     if (pointer.id === this.stickPointerId) this.resetStick();
     this.jumpButton.setFillStyle(0xffffff, JUMP_FILL_ALPHA);
     this.attackButton.setFillStyle(0xff8d7a, ATTACK_FILL_ALPHA);
+    this.specialButton.setFillStyle(0xb388ff, SPECIAL_FILL_ALPHA);
   };
 
   private readonly onMediaChange = (): void => {
@@ -88,8 +102,10 @@ export class TouchInput implements InputSource {
     this.stickY = height - EDGE - STICK_RADIUS;
     this.jumpX = width - EDGE - JUMP_RADIUS;
     this.jumpY = this.stickY;
+    this.specialX = this.jumpX;
+    this.specialY = this.jumpY - JUMP_RADIUS - BUTTON_GAP - SPECIAL_RADIUS;
     this.attackX = this.jumpX;
-    this.attackY = this.jumpY - JUMP_RADIUS - 18 - ATTACK_RADIUS;
+    this.attackY = this.specialY - SPECIAL_RADIUS - BUTTON_GAP - ATTACK_RADIUS;
 
     const base = scene.add.circle(this.stickX, this.stickY, STICK_RADIUS, 0xffffff, 0.2);
     base.setStrokeStyle(3, 0xffffff, 0.75);
@@ -98,6 +114,8 @@ export class TouchInput implements InputSource {
     this.jumpButton.setStrokeStyle(3, 0xffffff, 0.9);
     this.attackButton = scene.add.circle(this.attackX, this.attackY, ATTACK_RADIUS, 0xff8d7a, ATTACK_FILL_ALPHA);
     this.attackButton.setStrokeStyle(3, 0xffffff, 0.9);
+    this.specialButton = scene.add.circle(this.specialX, this.specialY, SPECIAL_RADIUS, 0xb388ff, SPECIAL_FILL_ALPHA);
+    this.specialButton.setStrokeStyle(3, 0xffffff, 0.9);
     const jumpLabel = scene.add
       .text(this.jumpX, this.jumpY, 'ジャンプ', {
         fontFamily: 'sans-serif',
@@ -112,8 +130,24 @@ export class TouchInput implements InputSource {
         color: '#222222'
       })
       .setOrigin(0.5);
+    const specialLabel = scene.add
+      .text(this.specialX, this.specialY, '必殺', {
+        fontFamily: 'sans-serif',
+        fontSize: '15px',
+        color: '#222222'
+      })
+      .setOrigin(0.5);
 
-    this.ui = scene.add.container(0, 0, [base, this.knob, this.jumpButton, jumpLabel, this.attackButton, attackLabel]);
+    this.ui = scene.add.container(0, 0, [
+      base,
+      this.knob,
+      this.jumpButton,
+      jumpLabel,
+      this.specialButton,
+      specialLabel,
+      this.attackButton,
+      attackLabel
+    ]);
     this.ui.setScrollFactor(0);
     this.ui.setDepth(1000);
 
@@ -133,14 +167,16 @@ export class TouchInput implements InputSource {
 
     const jump = this.jumpQueued;
     const attack = this.attackQueued;
+    const special = this.specialQueued;
     this.jumpQueued = false;
     this.attackQueued = false;
+    this.specialQueued = false;
     return {
       moveX: this.moveX,
       moveY: this.moveY,
       jump,
       attack,
-      special: false,
+      special,
       dodge: false
     };
   }
@@ -163,8 +199,10 @@ export class TouchInput implements InputSource {
       this.resetStick();
       this.jumpQueued = false;
       this.attackQueued = false;
+      this.specialQueued = false;
       this.jumpButton.setFillStyle(0xffffff, JUMP_FILL_ALPHA);
       this.attackButton.setFillStyle(0xff8d7a, ATTACK_FILL_ALPHA);
+      this.specialButton.setFillStyle(0xb388ff, SPECIAL_FILL_ALPHA);
     }
   }
 
