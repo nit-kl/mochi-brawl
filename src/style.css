@@ -5,31 +5,38 @@ html, body {
   height: 100%;
   overflow: hidden;
   background: #111;
+  overscroll-behavior: none;
+}
+
+#game,
+#rotate-hint {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 #game {
   width: 100%;
   height: 100%;
-  touch-action: none;
 }
 
 #rotate-hint {
   display: none;
   position: fixed;
   inset: 0;
-  z-index: 10;
+  z-index: 20;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
   background: #111;
   color: #ffffff;
   font-family: sans-serif;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   text-align: center;
 }
 
-@media (pointer: coarse) and (orientation: portrait) {
-  #rotate-hint {
-    display: flex;
-  }
+#rotate-hint.is-visible {
+  display: flex;
 }

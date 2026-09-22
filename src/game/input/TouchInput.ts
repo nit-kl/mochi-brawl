@@ -1,76 +1,43 @@
 import Phaser from 'phaser';
 import type { InputSource } from './InputSource';
 import { neutralInput, type PlayerInputState } from './PlayerInput';
+import { isPortraitPhone, isTouchLayout, watchDeviceLayout } from '../ui/deviceLayout';
+import { TouchControlsView, type TouchButtonId } from '../ui/TouchControlsView';
 
-const STICK_RADIUS = 52;
-const STICK_GRAB_RADIUS = 72;
-const KNOB_RADIUS = 22;
-const JUMP_RADIUS = 46;
-const ATTACK_RADIUS = 42;
-const SPECIAL_RADIUS = 40;
-const EDGE = 36;
-const BUTTON_GAP = 14;
 const DEADZONE = 0.18;
-const JUMP_FILL_ALPHA = 0.78;
-const ATTACK_FILL_ALPHA = 0.9;
-const SPECIAL_FILL_ALPHA = 0.92;
-const TOUCH_LAYOUT_QUERY = '(pointer: coarse) and (hover: none)';
 
-/** マウス操作のPCでは false。スマホの横持ちだけ true。 */
-export function isTouchLayout(): boolean {
-  return window.matchMedia(TOUCH_LAYOUT_QUERY).matches;
-}
-
+/** スマホ操作の入力状態。見た目は TouchControlsView が持つ。 */
 export class TouchInput implements InputSource {
   private readonly scene: Phaser.Scene;
-  private readonly ui: Phaser.GameObjects.Container;
-  private readonly knob: Phaser.GameObjects.Arc;
-  private readonly jumpButton: Phaser.GameObjects.Arc;
-  private readonly attackButton: Phaser.GameObjects.Arc;
-  private readonly specialButton: Phaser.GameObjects.Arc;
-  private readonly media: MediaQueryList;
-  private readonly stickX: number;
-  private readonly stickY: number;
-  private readonly jumpX: number;
-  private readonly jumpY: number;
-  private readonly attackX: number;
-  private readonly attackY: number;
-  private readonly specialX: number;
-  private readonly specialY: number;
-  private enabled: boolean;
+  private readonly view: TouchControlsView;
+  private readonly stopWatch: () => void;
+  private enabled = false;
   private moveX = 0;
   private moveY = 0;
   private jumpQueued = false;
   private attackQueued = false;
   private specialQueued = false;
   private stickPointerId: number | null = null;
+  private readonly buttonPointer: Record<TouchButtonId, number | null> = {
+    jump: null,
+    attack: null,
+    special: null
+  };
   private destroyed = false;
 
   private readonly onPointerDown = (pointer: Phaser.Input.Pointer): void => {
     if (!this.enabled) return;
 
-    if (distance(pointer.x, pointer.y, this.attackX, this.attackY) <= ATTACK_RADIUS) {
-      this.attackQueued = true;
-      this.attackButton.setFillStyle(0xffd0c4, 1);
+    const button = this.view.hitButton(pointer.x, pointer.y);
+    if (button) {
+      if (this.buttonPointer[button] !== null) return;
+      this.buttonPointer[button] = pointer.id;
+      this.queueButton(button);
+      this.view.setPressed(button, true);
       return;
     }
 
-    if (distance(pointer.x, pointer.y, this.specialX, this.specialY) <= SPECIAL_RADIUS) {
-      this.specialQueued = true;
-      this.specialButton.setFillStyle(0xd7c4ff, 1);
-      return;
-    }
-
-    if (distance(pointer.x, pointer.y, this.jumpX, this.jumpY) <= JUMP_RADIUS) {
-      this.jumpQueued = true;
-      this.jumpButton.setFillStyle(0xffe08a, 0.9);
-      return;
-    }
-
-    if (
-      this.stickPointerId === null &&
-      distance(pointer.x, pointer.y, this.stickX, this.stickY) <= STICK_GRAB_RADIUS
-    ) {
+    if (this.stickPointerId === null && this.view.hitsStick(pointer.x, pointer.y)) {
       this.stickPointerId = pointer.id;
       this.updateStick(pointer.x, pointer.y);
     }
@@ -83,83 +50,33 @@ export class TouchInput implements InputSource {
 
   private readonly onPointerUp = (pointer: Phaser.Input.Pointer): void => {
     if (pointer.id === this.stickPointerId) this.resetStick();
-    this.jumpButton.setFillStyle(0xffffff, JUMP_FILL_ALPHA);
-    this.attackButton.setFillStyle(0xff8d7a, ATTACK_FILL_ALPHA);
-    this.specialButton.setFillStyle(0xb388ff, SPECIAL_FILL_ALPHA);
+    for (const id of ['jump', 'attack', 'special'] as const) {
+      if (this.buttonPointer[id] !== pointer.id) continue;
+      this.buttonPointer[id] = null;
+      this.view.setPressed(id, false);
+    }
   };
 
-  private readonly onMediaChange = (): void => {
-    this.setEnabled(this.media.matches);
+  private readonly onResize = (): void => {
+    this.view.layout();
+    this.refreshEnabled();
   };
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
-    scene.input.addPointer(3);
-
-    const width = scene.scale.gameSize.width;
-    const height = scene.scale.gameSize.height;
-    this.stickX = EDGE + STICK_RADIUS;
-    this.stickY = height - EDGE - STICK_RADIUS;
-    this.jumpX = width - EDGE - JUMP_RADIUS;
-    this.jumpY = this.stickY;
-    this.specialX = this.jumpX;
-    this.specialY = this.jumpY - JUMP_RADIUS - BUTTON_GAP - SPECIAL_RADIUS;
-    this.attackX = this.jumpX;
-    this.attackY = this.specialY - SPECIAL_RADIUS - BUTTON_GAP - ATTACK_RADIUS;
-
-    const base = scene.add.circle(this.stickX, this.stickY, STICK_RADIUS, 0xffffff, 0.2);
-    base.setStrokeStyle(3, 0xffffff, 0.75);
-    this.knob = scene.add.circle(this.stickX, this.stickY, KNOB_RADIUS, 0xffffff, 0.85);
-    this.jumpButton = scene.add.circle(this.jumpX, this.jumpY, JUMP_RADIUS, 0xffffff, JUMP_FILL_ALPHA);
-    this.jumpButton.setStrokeStyle(3, 0xffffff, 0.9);
-    this.attackButton = scene.add.circle(this.attackX, this.attackY, ATTACK_RADIUS, 0xff8d7a, ATTACK_FILL_ALPHA);
-    this.attackButton.setStrokeStyle(3, 0xffffff, 0.9);
-    this.specialButton = scene.add.circle(this.specialX, this.specialY, SPECIAL_RADIUS, 0xb388ff, SPECIAL_FILL_ALPHA);
-    this.specialButton.setStrokeStyle(3, 0xffffff, 0.9);
-    const jumpLabel = scene.add
-      .text(this.jumpX, this.jumpY, 'ジャンプ', {
-        fontFamily: 'sans-serif',
-        fontSize: '15px',
-        color: '#222222'
-      })
-      .setOrigin(0.5);
-    const attackLabel = scene.add
-      .text(this.attackX, this.attackY, '攻撃', {
-        fontFamily: 'sans-serif',
-        fontSize: '15px',
-        color: '#222222'
-      })
-      .setOrigin(0.5);
-    const specialLabel = scene.add
-      .text(this.specialX, this.specialY, '必殺', {
-        fontFamily: 'sans-serif',
-        fontSize: '15px',
-        color: '#222222'
-      })
-      .setOrigin(0.5);
-
-    this.ui = scene.add.container(0, 0, [
-      base,
-      this.knob,
-      this.jumpButton,
-      jumpLabel,
-      this.specialButton,
-      specialLabel,
-      this.attackButton,
-      attackLabel
-    ]);
-    this.ui.setScrollFactor(0);
-    this.ui.setDepth(1000);
-
-    this.media = window.matchMedia(TOUCH_LAYOUT_QUERY);
-    this.enabled = isTouchLayout();
-    this.ui.setVisible(this.enabled);
-    this.media.addEventListener('change', this.onMediaChange);
+    scene.input.addPointer(4);
+    this.view = new TouchControlsView(scene);
+    this.stopWatch = watchDeviceLayout(this.onResize);
+    scene.scale.on(Phaser.Scale.Events.RESIZE, this.onResize);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      scene.scale.off(Phaser.Scale.Events.RESIZE, this.onResize);
+    });
 
     scene.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown);
     scene.input.on(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove);
     scene.input.on(Phaser.Input.Events.POINTER_UP, this.onPointerUp);
     scene.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUp);
+    this.refreshEnabled();
   }
 
   read(): PlayerInputState {
@@ -184,47 +101,59 @@ export class TouchInput implements InputSource {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
-    this.media.removeEventListener('change', this.onMediaChange);
+    this.stopWatch();
+    this.scene.scale.off(Phaser.Scale.Events.RESIZE, this.onResize);
     this.scene.input.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown);
     this.scene.input.off(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove);
     this.scene.input.off(Phaser.Input.Events.POINTER_UP, this.onPointerUp);
     this.scene.input.off(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUp);
-    this.ui.destroy();
+    this.view.destroy();
+  }
+
+  private refreshEnabled(): void {
+    this.setEnabled(isTouchLayout() && !isPortraitPhone());
   }
 
   private setEnabled(enabled: boolean): void {
     this.enabled = enabled;
-    this.ui.setVisible(enabled);
+    this.view.setVisible(enabled);
     if (!enabled) {
       this.resetStick();
       this.jumpQueued = false;
       this.attackQueued = false;
       this.specialQueued = false;
-      this.jumpButton.setFillStyle(0xffffff, JUMP_FILL_ALPHA);
-      this.attackButton.setFillStyle(0xff8d7a, ATTACK_FILL_ALPHA);
-      this.specialButton.setFillStyle(0xb388ff, SPECIAL_FILL_ALPHA);
+      this.buttonPointer.jump = null;
+      this.buttonPointer.attack = null;
+      this.buttonPointer.special = null;
+      this.view.resetPressed();
     }
   }
 
+  private queueButton(id: TouchButtonId): void {
+    if (id === 'jump') this.jumpQueued = true;
+    else if (id === 'attack') this.attackQueued = true;
+    else this.specialQueued = true;
+  }
+
   private updateStick(x: number, y: number): void {
-    let dx = x - this.stickX;
-    let dy = y - this.stickY;
+    const center = this.view.stickCenter();
+    const radius = this.view.stickRadius();
+    let dx = x - center.x;
+    let dy = y - center.y;
     const dist = Math.hypot(dx, dy);
-    if (dist > STICK_RADIUS && dist > 0) {
-      dx = (dx / dist) * STICK_RADIUS;
-      dy = (dy / dist) * STICK_RADIUS;
+    if (dist > radius && dist > 0) {
+      dx = (dx / dist) * radius;
+      dy = (dy / dist) * radius;
     }
 
-    this.knob.setPosition(this.stickX + dx, this.stickY + dy);
-
-    const nx = dx / STICK_RADIUS;
-    const ny = dy / STICK_RADIUS;
+    this.view.setKnob(dx, dy, true);
+    const nx = dx / radius;
+    const ny = dy / radius;
     if (Math.hypot(nx, ny) < DEADZONE) {
       this.moveX = 0;
       this.moveY = 0;
       return;
     }
-
     this.moveX = clampUnit(nx);
     this.moveY = clampUnit(ny);
   }
@@ -233,12 +162,8 @@ export class TouchInput implements InputSource {
     this.stickPointerId = null;
     this.moveX = 0;
     this.moveY = 0;
-    this.knob.setPosition(this.stickX, this.stickY);
+    this.view.setKnob(0, 0, false);
   }
-}
-
-function distance(x1: number, y1: number, x2: number, y2: number): number {
-  return Math.hypot(x1 - x2, y1 - y2);
 }
 
 function clampUnit(value: number): number {

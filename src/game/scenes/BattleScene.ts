@@ -10,6 +10,7 @@ import type { PlayerInput } from '../input/PlayerInput';
 import { StockMatch, STARTING_STOCKS, type MatchAction } from '../match/StockMatch';
 import { Fighter } from '../player/Fighter';
 import { PLACEHOLDER_STAGE } from '../stage/PlaceholderStage';
+import { MobileHudLayout } from '../ui/MobileHudLayout';
 
 const SPAWNS = [
   { x: 460, y: 470, color: 0x6aa6ff, character: MOCHIMARU },
@@ -65,6 +66,7 @@ export class BattleScene extends Phaser.Scene {
     });
 
     this.hud = SPAWNS.map((spawn, index) => this.createHud(spawn.character.displayName, index));
+    new MobileHudLayout(this, this.hud);
     this.refreshHud();
     this.debugOverlay = new CombatDebugOverlay(this, PLACEHOLDER_STAGE.koBounds);
 

@@ -1,6 +1,11 @@
 import Phaser from 'phaser';
 import { BattleScene } from './game/scenes/BattleScene';
+import { installGameTouchGuards } from './game/ui/gameTouchGuards';
+import { syncPortraitHint } from './game/ui/deviceLayout';
 import './style.css';
+
+installGameTouchGuards();
+syncPortraitHint();
 
 new Phaser.Game({
   type: Phaser.AUTO,
