@@ -59,3 +59,18 @@
 
 詳細は実装前に確定する。
 方向性として、もちまると重複する突進技だけに依存しない。
+
+---
+
+## 現在の共通通常攻撃
+
+Milestone 04 時点では、もちまるとぽてちの性能差はまだない。両者とも次の仮通常攻撃を使う。固有技は Milestone 05 と 06。
+
+- damage: 8
+- baseKnockback: 320
+- knockbackScaling: 8
+- knockbackAngleDegrees: 30（前方水平から上）
+- knockbackLockMs: 380
+
+吹き飛ばしの強さは `baseKnockback + ヒット後のダメージ% × knockbackScaling`。
+`knockbackLockMs` は操作で速度を上書きしない時間で、終わっても横速度は 0 にしない。空中では減衰し、着地すると通常の移動に戻る。

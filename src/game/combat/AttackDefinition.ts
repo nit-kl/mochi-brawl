@@ -12,6 +12,13 @@ export type AttackDefinition = {
     width: number;
     height: number;
   };
+  damage: number;
+  baseKnockback: number;
+  knockbackScaling: number;
+  /** 前方水平を 0、真上を 90 とした吹き飛ばし角度（度） */
+  knockbackAngleDegrees: number;
+  /** この間は移動入力で吹き飛ばし速度を上書きしない */
+  knockbackLockMs: number;
 };
 
 export const NEUTRAL_ATTACK: AttackDefinition = {
@@ -24,7 +31,12 @@ export const NEUTRAL_ATTACK: AttackDefinition = {
     forward: 48,
     width: 46,
     height: 36
-  }
+  },
+  damage: 8,
+  baseKnockback: 320,
+  knockbackScaling: 8,
+  knockbackAngleDegrees: 30,
+  knockbackLockMs: 380
 };
 
 export type AttackPhaseName = 'idle' | 'startup' | 'active' | 'recovery';

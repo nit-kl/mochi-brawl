@@ -1,11 +1,14 @@
 import Phaser from 'phaser';
 import { NEUTRAL_ATTACK } from '../combat/AttackDefinition';
+import { createHitResult } from '../combat/HitResult';
 import { resolveHits } from '../combat/resolveHits';
+import { CombatDebugOverlay } from '../debug/CombatDebugOverlay';
 import { createPlayerInput } from '../input/createPlayerInput';
 import { PLAYER_TWO_KEYBOARD_LAYOUT } from '../input/KeyboardInput';
 import type { PlayerInput } from '../input/PlayerInput';
 import { StockMatch, STARTING_STOCKS, type MatchAction } from '../match/StockMatch';
 import { Fighter } from '../player/Fighter';
+import { PLACEHOLDER_STAGE } from '../stage/PlaceholderStage';
 
 const SPAWNS = [
   { x: 460, y: 470, color: 0x6aa6ff, label: '1P' },
@@ -19,12 +22,20 @@ type FighterSlot = {
   spawnY: number;
 };
 
+type HudSlot = {
+  info: Phaser.GameObjects.Text;
+  percent: Phaser.GameObjects.Text;
+};
+
 export class BattleScene extends Phaser.Scene {
   private readonly slots: FighterSlot[] = [];
   private match!: StockMatch;
-  private hud: Phaser.GameObjects.Text[] = [];
+  private hud: HudSlot[] = [];
   private resultText!: Phaser.GameObjects.Text;
   private restartKey: Phaser.Input.Keyboard.Key | null = null;
+  private debugKey: Phaser.Input.Keyboard.Key | null = null;
+  private debugEnabled = false;
+  private debugOverlay!: CombatDebugOverlay;
 
   constructor() {
     super('BattleScene');
@@ -52,18 +63,9 @@ export class BattleScene extends Phaser.Scene {
       this.slots.push({ fighter, input, spawnX: spawn.x, spawnY: spawn.y });
     });
 
-    this.hud = SPAWNS.map((spawn, index) => {
-      const text = this.add.text(index === 0 ? 24 : 1256, 18, '', {
-        fontFamily: 'sans-serif',
-        fontSize: '28px',
-        color: index === 0 ? '#1d4e89' : '#8a3d16'
-      });
-      text.setOrigin(index === 0 ? 0 : 1, 0);
-      text.setScrollFactor(0);
-      text.setDepth(1500);
-      return text;
-    });
+    this.hud = SPAWNS.map((spawn, index) => this.createHud(spawn.label, index));
     this.refreshHud();
+    this.debugOverlay = new CombatDebugOverlay(this, PLACEHOLDER_STAGE.koBounds);
 
     this.resultText = this.add
       .text(640, 250, '', {
@@ -78,9 +80,11 @@ export class BattleScene extends Phaser.Scene {
       .setVisible(false);
 
     this.restartKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.R) ?? null;
+    this.debugKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.F3) ?? null;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       for (const slot of this.slots) slot.input.destroy();
       if (this.restartKey) this.input.keyboard?.removeKey(this.restartKey);
+      if (this.debugKey) this.input.keyboard?.removeKey(this.debugKey);
     });
   }
 
@@ -90,20 +94,39 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.debugKey && Phaser.Input.Keyboard.JustDown(this.debugKey)) this.debugEnabled = !this.debugEnabled;
+
     for (const slot of this.slots) slot.fighter.update(slot.input.read(), time);
 
-    for (const hit of resolveHits(this.slots.map((slot) => slot.fighter))) {
-      console.log(`Player ${hit.attackerId} hit Player ${hit.targetId}`);
-      this.slots[hit.targetId - 1]?.fighter.onHit(time);
+    for (const contact of resolveHits(this.slots.map((slot) => slot.fighter))) {
+      const attacker = this.slots[contact.attackerId - 1]?.fighter;
+      const defender = this.slots[contact.targetId - 1]?.fighter;
+      if (!attacker || !defender) continue;
+      const result = createHitResult(
+        attacker.id,
+        defender.id,
+        attacker.attack.attackDefinition,
+        defender.damagePercent,
+        attacker.character.facing
+      );
+      defender.applyHitResult(result, time);
+      console.log(
+        `Player ${result.attackerId} hit Player ${result.defenderId}: ${defender.damagePercent}% knockback ${Math.round(result.knockback)}`
+      );
     }
 
     const actions = this.match.update(
       time,
-      this.slots.map((slot) => slot.fighter.y)
+      this.slots.map((slot) => ({ x: slot.fighter.x, y: slot.fighter.y })),
+      PLACEHOLDER_STAGE.koBounds
     );
     this.applyActions(actions);
     this.refreshHud();
     this.updateBlink(time);
+    this.debugOverlay.draw(
+      this.debugEnabled,
+      this.slots.map((slot) => slot.fighter.hurtbox.bounds(slot.fighter.x, slot.fighter.y))
+    );
   }
 
   private applyActions(actions: MatchAction[]): void {
@@ -114,6 +137,7 @@ export class BattleScene extends Phaser.Scene {
         slot.fighter.eliminate();
         continue;
       }
+      if (action.type === 'respawn') slot.fighter.resetDamage();
       slot.fighter.place(slot.spawnX, slot.spawnY);
     }
 
@@ -128,12 +152,40 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  private createHud(label: string, index: number): HudSlot {
+    const alignRight = index === 1;
+    const color = index === 0 ? '#1d4e89' : '#8a3d16';
+    const info = this.add.text(alignRight ? 1256 : 24, 16, label, {
+      fontFamily: 'sans-serif',
+      fontSize: '26px',
+      color,
+      align: alignRight ? 'right' : 'left',
+      lineSpacing: 4
+    });
+    const percent = this.add.text(alignRight ? 1256 : 24, 92, '0%', {
+      fontFamily: 'sans-serif',
+      fontSize: '34px',
+      color
+    });
+    for (const text of [info, percent]) {
+      text.setOrigin(alignRight ? 1 : 0, 0);
+      text.setScrollFactor(0);
+      text.setDepth(1500);
+    }
+    return { info, percent };
+  }
+
   private refreshHud(): void {
-    this.hud.forEach((text, index) => {
+    this.hud.forEach((slot, index) => {
       const spawn = SPAWNS[index];
-      if (!spawn) return;
-      const marks = '●'.repeat(this.match.stocksOf(index)) + '○'.repeat(STARTING_STOCKS - this.match.stocksOf(index));
-      text.setText(index === 0 ? `${spawn.label}  ${marks}` : `${marks}  ${spawn.label}`);
+      const fighter = this.slots[index]?.fighter;
+      if (!spawn || !fighter) return;
+      const stocks = this.match.stocksOf(index);
+      const stars = '★'.repeat(stocks) + '☆'.repeat(STARTING_STOCKS - stocks);
+      const percent = Math.round(fighter.damagePercent);
+      slot.info.setText(`${spawn.label}\n${stars}`);
+      slot.percent.setText(`${percent}%`);
+      slot.percent.setColor(percentColor(percent, index));
     });
   }
 
@@ -144,4 +196,10 @@ export class BattleScene extends Phaser.Scene {
       slot.fighter.setAlpha(this.match.isInvulnerable(index, time) && !visiblePhase ? 0.35 : 1);
     });
   }
+}
+
+function percentColor(percent: number, index: number): string {
+  if (percent >= 100) return '#d01212';
+  if (percent >= 50) return '#e07a00';
+  return index === 0 ? '#1d4e89' : '#8a3d16';
 }

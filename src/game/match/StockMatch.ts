@@ -1,5 +1,6 @@
+import { isOutsideKoBounds, type KoBounds } from '../stage/KoBounds';
+
 export const STARTING_STOCKS = 3;
-export const FALL_LIMIT_Y = 920;
 export const RESPAWN_INVULNERABLE_MS = 1200;
 
 export type MatchAction =
@@ -7,7 +8,7 @@ export type MatchAction =
   | { type: 'respawn'; index: number }
   | { type: 'eliminated'; index: number };
 
-/** ストックと落下判定。キャラクターの移動や入力は持たない。 */
+/** ストックと四方向の KO 境界。キャラクターの移動や入力は持たない。 */
 export class StockMatch {
   private readonly stocks: number[];
   private readonly invulnerableUntil: number[];
@@ -35,15 +36,16 @@ export class StockMatch {
     return this.finished;
   }
 
-  update(now: number, ys: readonly number[]): MatchAction[] {
+  update(now: number, positions: readonly { x: number; y: number }[], bounds: KoBounds): MatchAction[] {
     if (this.finished) return [];
 
     const actions: MatchAction[] = [];
     const eliminated: number[] = [];
 
     for (let index = 0; index < this.stocks.length; index += 1) {
-      if ((this.stocks[index] ?? 0) <= 0) continue;
-      if ((ys[index] ?? 0) <= FALL_LIMIT_Y) continue;
+      const position = positions[index];
+      if ((this.stocks[index] ?? 0) <= 0 || !position) continue;
+      if (!isOutsideKoBounds(position.x, position.y, bounds)) continue;
 
       if (this.isInvulnerable(index, now)) {
         actions.push({ type: 'recover', index });

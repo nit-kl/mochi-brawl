@@ -1,14 +1,15 @@
 import type { Fighter } from '../player/Fighter';
 import { intersects } from './Rect';
 
-export type HitEvent = {
+/** 誰の攻撃が誰に当たったか。ダメージや速度は含まない。 */
+export type HitContact = {
   attackerId: 1 | 2;
   targetId: 1 | 2;
 };
 
 /** Hitbox と Hurtbox の重なりだけを見る。物理コライダーは使わない。 */
-export function resolveHits(fighters: readonly Fighter[]): HitEvent[] {
-  const events: HitEvent[] = [];
+export function resolveHits(fighters: readonly Fighter[]): HitContact[] {
+  const events: HitContact[] = [];
 
   for (const attacker of fighters) {
     if (!attacker.alive || !attacker.attack.hitbox.isEnabled) continue;

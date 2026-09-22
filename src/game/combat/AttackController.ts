@@ -16,6 +16,10 @@ export class AttackController {
     return this.phase;
   }
 
+  get attackDefinition(): AttackDefinition {
+    return this.definition;
+  }
+
   allowsMovement(): boolean {
     return this.phase === 'idle' || this.definition.canMoveDuringAttack;
   }

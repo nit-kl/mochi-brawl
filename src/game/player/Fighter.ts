@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import { AttackController } from '../combat/AttackController';
 import type { AttackDefinition } from '../combat/AttackDefinition';
+import type { HitResult } from '../combat/HitResult';
 import { Hurtbox } from '../combat/Hurtbox';
 import type { PlayerInputState } from '../input/PlayerInput';
 import { PlaceholderPlayer } from './PlaceholderPlayer';
@@ -15,8 +16,12 @@ export class Fighter {
   readonly character: PlaceholderPlayer;
   readonly hurtbox = new Hurtbox(BODY_WIDTH, BODY_HEIGHT);
   readonly attack: AttackController;
+  damagePercent = 0;
   alive = true;
   private flashUntil = 0;
+  private isInKnockback = false;
+  private knockbackUntil = 0;
+  private previousTime = -1;
 
   constructor(scene: Phaser.Scene, id: 1 | 2, x: number, y: number, color: number, attackDefinition: AttackDefinition) {
     this.id = id;
@@ -34,20 +39,41 @@ export class Fighter {
 
   update(input: PlayerInputState, now: number): void {
     if (!this.alive) return;
-    this.character.applyInput(input, this.attack.allowsMovement());
+    const dt = this.previousTime < 0 ? 0 : Math.min(0.05, (now - this.previousTime) / 1000);
+    this.previousTime = now;
+    if (this.isInKnockback && this.character.isLanded) this.isInKnockback = false;
+
+    const mode = !this.isInKnockback
+      ? 'normal'
+      : now < this.knockbackUntil
+        ? 'knockback-locked'
+        : 'knockback-air';
+    this.character.applyInput(input, this.attack.allowsMovement(), mode, dt);
     this.attack.update(now, input.attack, this.character.facing, this.x, this.y);
     this.character.setPose(this.attack.currentPhase);
     this.updateFlash(now);
   }
 
-  onHit(now: number): void {
+  applyHitResult(result: HitResult, now: number): void {
+    this.damagePercent += result.damage;
+    this.isInKnockback = true;
+    this.knockbackUntil = now + result.attack.knockbackLockMs;
+    this.character.setVelocity(result.velocityX, result.velocityY);
     this.flashUntil = now + HIT_FLASH_MS;
     this.character.setFill(0xffffff);
+  }
+
+  resetDamage(): void {
+    this.damagePercent = 0;
+    this.isInKnockback = false;
+    this.knockbackUntil = 0;
   }
 
   place(x: number, y: number): void {
     this.alive = true;
     this.flashUntil = 0;
+    this.isInKnockback = false;
+    this.knockbackUntil = 0;
     this.attack.cancel();
     this.character.restoreColor();
     this.character.place(x, y);

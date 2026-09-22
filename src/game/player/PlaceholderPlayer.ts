@@ -5,6 +5,12 @@ const WIDTH = 56;
 const HEIGHT = 72;
 const MOVE_SPEED = 280;
 const JUMP_VELOCITY = -620;
+/** 空中の吹き飛ばしを、1秒あたりこの割合で指数減衰させる。 */
+const AIR_DRAG_PER_SECOND = 1.05;
+/** 操作復帰後に足す横加速度。通常の移動速度へは置き換えない。 */
+const KNOCKBACK_STEER_ACCEL = 520;
+
+export type MovementMode = 'normal' | 'knockback-locked' | 'knockback-air';
 
 /** 画像なしの仮キャラ。入力状態だけを受け取り、デバイスのことは知らない。 */
 export class PlaceholderPlayer {
@@ -32,7 +38,7 @@ export class PlaceholderPlayer {
     this.body = body;
     this.body.setCollideWorldBounds(false);
     this.body.setAllowGravity(true);
-    this.body.setMaxVelocity(450, 900);
+    this.body.setMaxVelocity(2400, 2400);
     this.body.setBounce(0);
     this.body.setDrag(0, 0);
   }
@@ -49,17 +55,42 @@ export class PlaceholderPlayer {
     return this.facingDirection;
   }
 
-  applyInput(input: PlayerInputState, canMove: boolean): void {
-    if (canMove) {
-      if (input.moveX < 0) this.facingDirection = -1;
-      else if (input.moveX > 0) this.facingDirection = 1;
+  get velocityX(): number {
+    return this.body.velocity.x;
+  }
+
+  /** 下に着いていて、上方向へ打ち上げられていない。 */
+  get isLanded(): boolean {
+    return this.body.blocked.down && this.body.velocity.y >= 0;
+  }
+
+  applyInput(input: PlayerInputState, canMove: boolean, mode: MovementMode, dt: number): void {
+    if (mode === 'knockback-locked') {
+      this.decayAirSpeed(dt);
+      this.syncMarker();
+      return;
     }
 
+    if (mode === 'knockback-air') {
+      this.updateFacing(input, canMove);
+      this.decayAirSpeed(dt);
+      if (canMove && input.moveX !== 0) {
+        this.body.velocity.x += input.moveX * KNOCKBACK_STEER_ACCEL * dt;
+      }
+      this.syncMarker();
+      return;
+    }
+
+    this.updateFacing(input, canMove);
     this.body.setVelocityX(canMove ? input.moveX * MOVE_SPEED : 0);
     if (canMove && input.jump && this.body.blocked.down) {
       this.body.setVelocityY(JUMP_VELOCITY);
     }
     this.syncMarker();
+  }
+
+  setVelocity(x: number, y: number): void {
+    this.body.setVelocity(x, y);
   }
 
   setPose(phase: 'idle' | 'startup' | 'active' | 'recovery'): void {
@@ -102,6 +133,17 @@ export class PlaceholderPlayer {
     this.body.enable = false;
     this.object.setVisible(false);
     this.marker.setVisible(false);
+  }
+
+  private updateFacing(input: PlayerInputState, canMove: boolean): void {
+    if (!canMove) return;
+    if (input.moveX < 0) this.facingDirection = -1;
+    else if (input.moveX > 0) this.facingDirection = 1;
+  }
+
+  private decayAirSpeed(dt: number): void {
+    if (dt <= 0) return;
+    this.body.velocity.x *= Math.exp(-AIR_DRAG_PER_SECOND * dt);
   }
 
   private syncMarker(): void {
