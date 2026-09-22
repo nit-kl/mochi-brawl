@@ -1,11 +1,14 @@
 import Phaser from 'phaser';
 import { BattleScene } from './game/scenes/BattleScene';
+import { CharacterSelectScene } from './game/scenes/CharacterSelectScene';
+import { StageSelectScene } from './game/scenes/StageSelectScene';
+import { TitleScene } from './game/scenes/TitleScene';
 import { installGameTouchGuards } from './game/ui/gameTouchGuards';
-import { syncPortraitHint } from './game/ui/deviceLayout';
+import { watchDeviceLayout } from './game/ui/deviceLayout';
 import './style.css';
 
 installGameTouchGuards();
-syncPortraitHint();
+watchDeviceLayout(() => undefined);
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -21,5 +24,5 @@ new Phaser.Game({
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
-  scene: [BattleScene]
+  scene: [TitleScene, CharacterSelectScene, StageSelectScene, BattleScene]
 });

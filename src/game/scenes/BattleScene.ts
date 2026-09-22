@@ -1,27 +1,22 @@
 import Phaser from 'phaser';
-import { MOCHIMARU } from '../characters/mochimaru';
-import { POTECHI } from '../characters/potechi';
+import { profileById, type CharacterProfile } from '../characters/roster';
 import { createHitResult } from '../combat/HitResult';
 import { resolveHits } from '../combat/resolveHits';
 import { CombatDebugOverlay } from '../debug/CombatDebugOverlay';
+import { loadMatchSetup } from '../flow/MatchSetup';
 import { createPlayerInput } from '../input/createPlayerInput';
 import { PLAYER_TWO_KEYBOARD_LAYOUT } from '../input/KeyboardInput';
 import type { PlayerInput } from '../input/PlayerInput';
 import { StockMatch, STARTING_STOCKS, type MatchAction } from '../match/StockMatch';
 import { Fighter } from '../player/Fighter';
-import { OHIRUNE_MEADOW } from '../stage/ohiruneMeadow';
-import { preloadOhiruneStageArt } from '../stage/StageArtView';
+import { preloadListedStage, resolveStage } from '../stage/stageCatalog';
+import type { StageDefinition } from '../stage/StageDefinition';
 import { StageRuntime } from '../stage/StageRuntime';
 import { BattleHud } from '../ui/BattleHud';
 import { HitEffectView } from '../ui/HitEffectView';
 import { MatchResultView } from '../ui/MatchResultView';
 import { MobileHudLayout } from '../ui/MobileHudLayout';
 import { ensureCharacterAnimations, preloadCharacterSprites } from '../view/SpriteCharacterView';
-
-const ROSTER = [
-  { color: 0x6aa6ff, character: MOCHIMARU },
-  { color: 0xf08a5d, character: POTECHI }
-] as const;
 
 type FighterSlot = {
   fighter: Fighter;
@@ -37,42 +32,53 @@ export class BattleScene extends Phaser.Scene {
   private hitEffects!: HitEffectView;
   private resultView!: MatchResultView;
   private restartKey: Phaser.Input.Keyboard.Key | null = null;
+  private backKey: Phaser.Input.Keyboard.Key | null = null;
   private debugKey: Phaser.Input.Keyboard.Key | null = null;
   private debugEnabled = false;
   private debugOverlay!: CombatDebugOverlay;
   private stage!: StageRuntime;
+  private stageDefinition: StageDefinition = resolveStage('ohirune_meadow');
+  private players: CharacterProfile[] = [];
   private startedAt: number | null = null;
+  private leaving = false;
 
   constructor() {
     super('BattleScene');
   }
 
+  init(): void {
+    const setup = loadMatchSetup(this);
+    this.stageDefinition = resolveStage(setup.stageId);
+    this.players = [profileById(setup.player1CharacterId), profileById(setup.player2CharacterId)];
+  }
+
   preload(): void {
-    preloadOhiruneStageArt(this);
-    for (const entry of ROSTER) {
+    preloadListedStage(this, this.stageDefinition.id);
+    for (const entry of this.players) {
       if (entry.character.spriteSet) preloadCharacterSprites(this, entry.character.spriteSet);
     }
   }
 
   create(): void {
+    this.leaving = false;
     this.cameras.main.setScroll(0, 0);
     this.input.mouse?.disableContextMenu();
 
-    this.stage = new StageRuntime(this, OHIRUNE_MEADOW);
+    this.stage = new StageRuntime(this, this.stageDefinition);
     this.startedAt = null;
-    for (const entry of ROSTER) {
+    for (const entry of this.players) {
       if (entry.character.spriteSet) ensureCharacterAnimations(this, entry.character.spriteSet);
     }
 
-    this.match = new StockMatch(ROSTER.length, STARTING_STOCKS);
+    this.match = new StockMatch(this.players.length, STARTING_STOCKS);
     this.slots.length = 0;
 
-    ROSTER.forEach((entry, index) => {
-      const spawn = OHIRUNE_MEADOW.spawnPoints[index];
-      const respawn = OHIRUNE_MEADOW.respawnPoints[index];
+    this.players.forEach((entry, index) => {
+      const spawn = this.stageDefinition.spawnPoints[index];
+      const respawn = this.stageDefinition.respawnPoints[index];
       if (!spawn || !respawn) return;
       const id = (index + 1) as 1 | 2;
-      const fighter = new Fighter(this, id, spawn.x, spawn.y, entry.color, entry.character);
+      const fighter = new Fighter(this, id, spawn.x, spawn.y, entry.bodyColor, entry.character);
       const input = createPlayerInput(
         this,
         index === 0 ? { touch: true } : { layout: PLAYER_TWO_KEYBOARD_LAYOUT, touch: false }
@@ -81,22 +87,29 @@ export class BattleScene extends Phaser.Scene {
     });
     this.stage.bind(this.slots.map((slot) => slot.fighter.character.object));
 
-    this.hud = new BattleHud(this, [
-      { name: 'もちまる', marker: 0x4c8dff, nameColor: '#1d4e89' },
-      { name: 'ぽてち', marker: 0xf08a5d, nameColor: '#8a3d16' }
-    ]);
+    this.hud = new BattleHud(
+      this,
+      this.players.map((entry) => ({
+        name: entry.character.displayName,
+        marker: entry.marker,
+        nameColor: entry.nameColor
+      }))
+    );
     new MobileHudLayout(this, this.hud.slots);
     this.hitEffects = new HitEffectView(this);
     this.resultView = new MatchResultView(this);
     this.refreshHud();
-    this.debugOverlay = new CombatDebugOverlay(this, OHIRUNE_MEADOW.koBounds);
+    this.debugOverlay = new CombatDebugOverlay(this, this.stageDefinition.koBounds);
 
-    this.restartKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.R) ?? null;
-    this.debugKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.F3) ?? null;
+    const keyboard = this.input.keyboard;
+    this.restartKey = keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.R) ?? null;
+    this.backKey = keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC) ?? null;
+    this.debugKey = keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.F3) ?? null;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       for (const slot of this.slots) slot.input.destroy();
-      if (this.restartKey) this.input.keyboard?.removeKey(this.restartKey);
-      if (this.debugKey) this.input.keyboard?.removeKey(this.debugKey);
+      if (this.restartKey) keyboard?.removeKey(this.restartKey);
+      if (this.backKey) keyboard?.removeKey(this.backKey);
+      if (this.debugKey) keyboard?.removeKey(this.debugKey);
     });
   }
 
@@ -107,7 +120,9 @@ export class BattleScene extends Phaser.Scene {
     if (this.match.isFinished) {
       this.stage.hideWarning();
       for (const slot of this.slots) slot.fighter.attack.hitbox.setDebugVisible(false);
-      if (this.restartKey && Phaser.Input.Keyboard.JustDown(this.restartKey)) this.scene.restart();
+      this.resultView.update(time);
+      if (this.restartKey && Phaser.Input.Keyboard.JustDown(this.restartKey)) this.leaveMatch('rematch');
+      if (this.backKey && Phaser.Input.Keyboard.JustDown(this.backKey)) this.leaveMatch('select');
       return;
     }
 
@@ -177,10 +192,17 @@ export class BattleScene extends Phaser.Scene {
 
     const winner = this.match.winner;
     const winnerName = winner === null ? null : this.slots[winner - 1]?.fighter.displayName;
-    this.resultView.showWinner(winnerName);
-    this.input.once(Phaser.Input.Events.POINTER_DOWN, () => {
-      if (this.match.isFinished) this.scene.restart();
+    this.resultView.showWinner(winnerName ?? null, {
+      onRematch: () => this.leaveMatch('rematch'),
+      onBack: () => this.leaveMatch('select')
     });
+  }
+
+  private leaveMatch(mode: 'rematch' | 'select'): void {
+    if (!this.match.isFinished || this.leaving) return;
+    this.leaving = true;
+    if (mode === 'rematch') this.scene.restart();
+    else this.scene.start('CharacterSelectScene');
   }
 
   private refreshHud(): void {

@@ -1,6 +1,6 @@
 # DEVELOPMENT_PLAN
 
-Milestone 01 から 08、09-A、09-A2、09-B、09-C、09-D は実装済み。番号はこれまでの実績に合わせてある。
+Milestone 01 から 08、09-A、09-A2、09-B、09-C、09-D、10 は実装済み。番号はこれまでの実績に合わせてある。
 
 ## Milestone 00: 開発基盤
 
@@ -136,6 +136,16 @@ Milestone 01 から 08、09-A、09-A2、09-B、09-C、09-D は実装済み。番
 - ヒット位置に短い火花。ぐるぐる突進とどっすーん！は大きく、上必殺は中くらい
 - 被弾の白フラッシュは 100ms。KO は短い表示だけで、復活は待たない
 - 勝敗は「もちまる WIN」「ぽてち WIN」。再戦は R とタップのまま
+
+## Milestone 10: タイトルから対戦までの流れ（完了）
+
+- `TitleScene` → `CharacterSelectScene` → `StageSelectScene` → `BattleScene`
+- 1P がキャラクターを選ぶ。2P は選ばれなかった側
+- ステージは `STAGE_LISTINGS`。今はおひるね草原だけ
+- 選択結果は `MatchSetup` として Phaser の registry に置く
+- HUD の名前とスプライトは、選んだ `CharacterDefinition` から出す
+- 勝敗後は R または「再戦」、Esc または「キャラ選択へ」。画面のどこかをタップしての再戦はしない
+- キャラクター性能、ダメージ、吹き飛ばし、ストック、ステージ縮小は変えていない
 
 ## Milestone 09-E 以降: 残りの本番アセット
 
