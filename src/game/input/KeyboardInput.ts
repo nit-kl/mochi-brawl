@@ -13,10 +13,17 @@ export type KeyboardLayout = {
 const codes = Phaser.Input.Keyboard.KeyCodes;
 
 export const PLAYER_ONE_KEYBOARD_LAYOUT: KeyboardLayout = {
-  left: [codes.A, codes.LEFT],
-  right: [codes.D, codes.RIGHT],
+  left: [codes.A],
+  right: [codes.D],
   jump: [codes.W, codes.SPACE],
   down: [codes.S]
+};
+
+export const PLAYER_TWO_KEYBOARD_LAYOUT: KeyboardLayout = {
+  left: [codes.LEFT],
+  right: [codes.RIGHT],
+  jump: [codes.UP],
+  down: [codes.DOWN]
 };
 
 export class KeyboardInput implements InputSource {
