@@ -1,0 +1,20 @@
+import Phaser from 'phaser';
+import { BattleScene } from './game/scenes/BattleScene';
+import './style.css';
+
+new Phaser.Game({
+  type: Phaser.AUTO,
+  parent: 'game',
+  width: 1280,
+  height: 720,
+  backgroundColor: '#cfefff',
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { x: 0, y: 1400 }, debug: false }
+  },
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  scene: [BattleScene]
+});
