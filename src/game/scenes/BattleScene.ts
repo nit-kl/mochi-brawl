@@ -12,6 +12,7 @@ import { Fighter } from '../player/Fighter';
 import { OHIRUNE_MEADOW } from '../stage/ohiruneMeadow';
 import { StageRuntime } from '../stage/StageRuntime';
 import { MobileHudLayout } from '../ui/MobileHudLayout';
+import { ensureCharacterAnimations, preloadCharacterSprites } from '../view/SpriteCharacterView';
 
 const ROSTER = [
   { color: 0x6aa6ff, character: MOCHIMARU },
@@ -46,12 +47,21 @@ export class BattleScene extends Phaser.Scene {
     super('BattleScene');
   }
 
+  preload(): void {
+    for (const entry of ROSTER) {
+      if (entry.character.spriteSet) preloadCharacterSprites(this, entry.character.spriteSet);
+    }
+  }
+
   create(): void {
     this.cameras.main.setScroll(0, 0);
     this.input.mouse?.disableContextMenu();
 
     this.stage = new StageRuntime(this, OHIRUNE_MEADOW);
     this.startedAt = null;
+    for (const entry of ROSTER) {
+      if (entry.character.spriteSet) ensureCharacterAnimations(this, entry.character.spriteSet);
+    }
 
     this.match = new StockMatch(ROSTER.length, STARTING_STOCKS);
     this.slots.length = 0;
@@ -102,6 +112,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.match.isFinished) {
       this.stage.hideWarning();
+      for (const slot of this.slots) slot.fighter.attack.hitbox.setDebugVisible(false);
       if (this.restartKey && Phaser.Input.Keyboard.JustDown(this.restartKey)) this.scene.restart();
       return;
     }
@@ -137,10 +148,16 @@ export class BattleScene extends Phaser.Scene {
     this.applyActions(actions);
     this.refreshHud();
     this.updateBlink(time);
+    for (const slot of this.slots) slot.fighter.attack.hitbox.setDebugVisible(this.debugEnabled);
+    const animationLine = this.slots
+      .map((slot) => slot.fighter.animationDebugText())
+      .filter((line) => line.length > 0)
+      .join('\n');
+    const stageLine = [this.stage.debugText(elapsed), animationLine].filter((line) => line.length > 0).join('\n');
     this.debugOverlay.draw(
       this.debugEnabled,
       this.slots.map((slot) => slot.fighter.hurtbox.bounds(slot.fighter.x, slot.fighter.y)),
-      this.stage.debugText(elapsed)
+      stageLine
     );
   }
 

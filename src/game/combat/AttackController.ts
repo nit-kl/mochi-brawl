@@ -38,6 +38,15 @@ export class AttackController {
     return this.phase === 'idle' ? 'default' : this.definition.visual;
   }
 
+  /** 表示が必殺の段階を見るためだけ。運動は変えない。 */
+  get displayedSlamStep(): 'none' | 'windup' | 'hop' | 'strike' {
+    return this.slamStep;
+  }
+
+  get slamHopAgeMs(): number {
+    return this.slamStep === 'hop' ? Math.max(0, this.now - this.hopAt) : 0;
+  }
+
   allowsMovement(): boolean {
     return this.phase === 'idle' || this.definition.canMoveDuringAttack;
   }

@@ -1,6 +1,6 @@
 # DEVELOPMENT_PLAN
 
-Milestone 01 から 08 は実装済み。番号はこれまでの実績に合わせてある。
+Milestone 01 から 08、09-A、09-A2、09-B は実装済み。番号はこれまでの実績に合わせてある。
 
 ## Milestone 00: 開発基盤
 
@@ -97,9 +97,32 @@ Milestone 01 から 08 は実装済み。番号はこれまでの実績に合わ
 - `?shrink=fast` で 10 秒と 20 秒に短縮できる。F3 のときだけ経過時間と Phase を出す
 - 7 分以降の吹き飛ばし補正は入れていない
 
-## Milestone 09: 本番アセット適用
+## Milestone 09-A: もちまるの Sprite 表示（完了）
 
-- もちまる、ぽてちのスプライト
+- 1P のもちまるだけ本番スプライト。2P のぽてちは仮表示のまま
+- 表示は `CharacterView`。物理ボディ、Hurtbox、Hitbox のサイズは変えていない
+- 接続したアニメーション: idle、run、jump、fall、special_roll、up_special、hit
+- ぺちは `mochimaru_attack.png` の 4 コマ。衝撃の星は隣のコマへ少し入る
+
+## Milestone 09-A2: もちまるの表示定義（完了）
+
+- フレーム番号、倍率、足元、オフセットは `AnimationVisualDefinition` に置く
+- 再生するフレームは定義側の配列。idle と jump と fall は `[0, 1]`
+- attack シートを足せば、ゲームロジックを変えずに仮演出を外せる
+- F3 に表示中のアニメーション名とフレームを出す
+- 右向き画像を基準にし、左向きは flipX
+- ぽてちの本番画像、ステージ背景、UI 素材は Milestone 09-B 以降
+
+## Milestone 09-B: ぽてちの Sprite 表示（完了）
+
+- 2P のぽてちだけ本番スプライト。もちまるの表示設定と性能は変えていない
+- 接続したアニメーション: idle、run、jump、fall、attack、special_slam、up_special、hit
+- 走りは 6 コマ。どっすーん！はしゃがみ、跳び、空中、急降下、着地、硬直を技の段階に合わせて出す
+- ばねジャンプは先頭 3 コマ。見た目の体の高さは約 96px
+- 物理ボディ、Hurtbox、Hitbox、ダメージ、吹き飛ばしは変えていない
+
+## Milestone 09-C 以降: 残りの本番アセット
+
 - ステージ背景と足場
 - UI とヒット演出の本番素材
 

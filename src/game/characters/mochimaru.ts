@@ -1,5 +1,6 @@
 import type { AttackDefinition } from '../combat/AttackDefinition';
 import type { CharacterDefinition } from './CharacterDefinition';
+import { MOCHIMARU_SPRITES } from './mochimaruSprites';
 
 const PECHI: AttackDefinition = {
   id: 'pechi',
@@ -71,6 +72,7 @@ export const MOCHIMARU: CharacterDefinition = {
   gravityScale: 1,
   weight: 1,
   look: { visualWidth: 56, visualHeight: 72, markerScale: 1 },
+  spriteSet: MOCHIMARU_SPRITES,
   normalAttack: PECHI,
   specialAttack: GURUGURU,
   upSpecial: BALLOON

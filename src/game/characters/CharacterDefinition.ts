@@ -1,4 +1,5 @@
 import type { AttackDefinition } from '../combat/AttackDefinition';
+import type { CharacterSpriteSet } from './CharacterSpriteSet';
 
 /** 仮表示の大きさ。物理ボディと Hurtbox とは別。 */
 export type PlaceholderLook = {
@@ -20,6 +21,8 @@ export type CharacterDefinition = {
   /** 1 が標準。小さいほど吹き飛びやすい。 */
   weight: number;
   look: PlaceholderLook;
+  /** 本番スプライト。無いキャラクターは仮表示のまま。 */
+  spriteSet: CharacterSpriteSet | null;
   normalAttack: AttackDefinition;
   specialAttack: AttackDefinition | null;
   upSpecial: AttackDefinition | null;

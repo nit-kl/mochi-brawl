@@ -41,12 +41,17 @@ export class Hitbox {
   begin(): void {
     this.enabled = true;
     this.alreadyHit.clear();
-    this.visual.setVisible(true);
+    this.visual.setVisible(false);
   }
 
   end(): void {
     this.enabled = false;
     this.visual.setVisible(false);
+  }
+
+  /** F3 のときだけ、有効な攻撃判定を黄色で出す。 */
+  setDebugVisible(show: boolean): void {
+    this.visual.setVisible(show && this.enabled);
   }
 
   place(x: number, y: number, facing: 1 | -1): void {

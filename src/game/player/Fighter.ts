@@ -4,6 +4,9 @@ import type { HitResult } from '../combat/HitResult';
 import { Hurtbox } from '../combat/Hurtbox';
 import { UP_SPECIAL_INPUT, type CharacterDefinition } from '../characters/CharacterDefinition';
 import type { PlayerInputState } from '../input/PlayerInput';
+import type { CharacterView, CharacterViewState } from '../view/CharacterAnimation';
+import { PlaceholderCharacterView } from '../view/PlaceholderCharacterView';
+import { SpriteCharacterView } from '../view/SpriteCharacterView';
 import { PlaceholderPlayer } from './PlaceholderPlayer';
 
 const BODY_WIDTH = 56;
@@ -17,6 +20,7 @@ export class Fighter {
   readonly hurtbox = new Hurtbox(BODY_WIDTH, BODY_HEIGHT);
   readonly attack: AttackController;
   readonly stats: CharacterDefinition;
+  private readonly view: CharacterView;
   damagePercent = 0;
   alive = true;
   private flashUntil = 0;
@@ -34,8 +38,13 @@ export class Fighter {
     this.stats = stats;
     this.jumpsRemaining = stats.maxJumps;
     this.upSpecialRemaining = stats.upSpecial ? 1 : 0;
-    this.character = new PlaceholderPlayer(scene, x, y, color, stats.gravityScale, stats.look);
+    this.character = new PlaceholderPlayer(scene, x, y, stats.gravityScale);
+    const feetY = y + BODY_HEIGHT / 2;
+    this.view = stats.spriteSet
+      ? new SpriteCharacterView(scene, stats.spriteSet, x, feetY)
+      : new PlaceholderCharacterView(scene, x, feetY, color, stats.look);
     this.attack = new AttackController(scene, stats.normalAttack);
+    this.syncView(0, 0);
   }
 
   get displayName(): string {
@@ -82,9 +91,7 @@ export class Fighter {
     }
     this.attack.update(now, this.x, this.y);
     this.attack.applyMotion(this.character, input.moveX);
-    this.character.setPose(this.attack.currentPhase);
-    this.character.setActionVisual(this.attack.visual, dt);
-    this.updateFlash(now);
+    this.syncView(dt, now);
   }
 
   private recoverResources(): void {
@@ -123,7 +130,7 @@ export class Fighter {
     this.character.setVelocity(result.velocityX, result.velocityY);
     this.attack.cancel();
     this.flashUntil = now + HIT_FLASH_MS;
-    this.character.setFill(0xffffff);
+    this.syncView(0, now);
   }
 
   resetDamage(): void {
@@ -142,21 +149,47 @@ export class Fighter {
     this.wasLanded = false;
     this.jumpedFromHeldUp = false;
     this.attack.cancel();
-    this.character.restoreColor();
     this.character.place(x, y);
+    this.view.place(x, y + BODY_HEIGHT / 2);
+    this.syncView(0, 0);
   }
 
   eliminate(): void {
     this.alive = false;
     this.attack.cancel();
     this.character.eliminate();
+    this.view.hide();
   }
 
   setAlpha(alpha: number): void {
-    this.character.setAlpha(alpha);
+    this.view.setAlpha(alpha);
   }
 
-  private updateFlash(now: number): void {
-    if (now >= this.flashUntil) this.character.restoreColor();
+  animationDebugText(): string {
+    return this.view.debugText();
+  }
+
+  private syncView(dt: number, now: number): void {
+    const state: CharacterViewState = {
+      x: this.character.x,
+      bodyY: this.character.y,
+      feetY: this.character.y + BODY_HEIGHT / 2,
+      facing: this.character.facing,
+      velocityX: this.character.velocityX,
+      velocityY: this.character.velocityY,
+      landed: this.character.isLanded,
+      hit: this.isInKnockback,
+      attackPhase: this.attack.currentPhase,
+      attackVisual: this.attack.visual,
+      slamStep: this.attack.displayedSlamStep,
+      slamHopAgeMs: this.attack.slamHopAgeMs,
+      slamDiveAfterMs:
+        this.attack.attackDefinition.motion?.kind === 'slam'
+          ? this.attack.attackDefinition.motion.landingDelay
+          : 0,
+      dt,
+      flashing: now < this.flashUntil
+    };
+    this.view.sync(state);
   }
 }

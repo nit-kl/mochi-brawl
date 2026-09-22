@@ -1,5 +1,6 @@
 import type { AttackDefinition } from '../combat/AttackDefinition';
 import type { CharacterDefinition } from './CharacterDefinition';
+import { POTECHI_SPRITES } from './potechiSprites';
 
 const DOSU: AttackDefinition = {
   id: 'dosu',
@@ -85,6 +86,7 @@ export const POTECHI: CharacterDefinition = {
   gravityScale: 1.1,
   weight: 1.4,
   look: { visualWidth: 76, visualHeight: 90, markerScale: 1.45 },
+  spriteSet: POTECHI_SPRITES,
   normalAttack: DOSU,
   specialAttack: DOSSUN,
   upSpecial: BANE
