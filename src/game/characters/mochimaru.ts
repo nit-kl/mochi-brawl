@@ -75,5 +75,11 @@ export const MOCHIMARU: CharacterDefinition = {
   spriteSet: MOCHIMARU_SPRITES,
   normalAttack: PECHI,
   specialAttack: GURUGURU,
-  upSpecial: BALLOON
+  upSpecial: BALLOON,
+  downSpecial: {
+    id: 'mochimaru-sweep', startupMs: 95, activeMs: 125, recoveryMs: 190,
+    canMoveDuringAttack: false, hitbox: { forward: 25, width: 76, height: 30, offsetY: 25 },
+    damage: 7, baseKnockback: 300, knockbackScaling: 7,
+    knockbackAngleDegrees: 35, knockbackLockMs: 340, motion: null, visual: 'down_special'
+  }
 };

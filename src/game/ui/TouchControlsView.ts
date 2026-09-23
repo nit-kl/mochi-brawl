@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { measureGameFrame } from './deviceLayout';
 import { layoutTouchControls, type TouchControlPlacement, type Vec2 } from './touchControlLayout';
 
-export type TouchButtonId = 'jump' | 'attack' | 'special';
+export type TouchButtonId = 'jump' | 'attack' | 'special' | 'guard';
 
 type ButtonView = {
   root: Phaser.GameObjects.Container;
@@ -38,12 +38,14 @@ export class TouchControlsView {
     this.buttons = {
       jump: this.createButton(0x3d92f5, 0xb9dcff),
       attack: this.createButton(0xf25b5b, 0xffc1b8),
-      special: this.createButton(0x9b6dff, 0xe3d4ff)
+      special: this.createButton(0x9b6dff, 0xe3d4ff),
+      guard: this.createButton(0x4db7a1, 0xb7f4e2)
     };
     this.labels = {
       jump: this.createLabel(this.buttons.jump, 'ジャンプ'),
       attack: this.createLabel(this.buttons.attack, '攻撃'),
-      special: this.createLabel(this.buttons.special, '必殺')
+      special: this.createLabel(this.buttons.special, '必殺'),
+      guard: this.createLabel(this.buttons.guard, '防御')
     };
 
     this.root = scene.add.container(0, 0, [
@@ -52,7 +54,8 @@ export class TouchControlsView {
       this.knob,
       this.buttons.jump.root,
       this.buttons.attack.root,
-      this.buttons.special.root
+      this.buttons.special.root,
+      this.buttons.guard.root
     ]);
     this.root.setScrollFactor(0);
     this.root.setDepth(1000);
@@ -70,7 +73,7 @@ export class TouchControlsView {
   }
 
   hitButton(x: number, y: number): TouchButtonId | null {
-    const order: TouchButtonId[] = ['attack', 'special', 'jump'];
+    const order: TouchButtonId[] = ['attack', 'special', 'jump', 'guard'];
     for (const id of order) {
       const at = this.placement[id];
       if (distance(x, y, at.x, at.y) <= this.placement.touchRadius) return id;
@@ -113,6 +116,7 @@ export class TouchControlsView {
     this.setPressed('jump', false);
     this.setPressed('attack', false);
     this.setPressed('special', false);
+    this.setPressed('guard', false);
     this.setKnob(0, 0, false);
   }
 
@@ -128,7 +132,7 @@ export class TouchControlsView {
     this.stickWell.setRadius(place.stickRadius * 0.72);
     this.knob.setRadius(place.knobRadius);
     this.setKnob(this.knobOffsetX, this.knobOffsetY, this.knobActive);
-    for (const id of ['jump', 'attack', 'special'] as const) {
+    for (const id of ['jump', 'attack', 'special', 'guard'] as const) {
       const at = place[id];
       this.buttons[id].root.setPosition(at.x, at.y);
       this.buttons[id].circle.setRadius(place.visualRadius);

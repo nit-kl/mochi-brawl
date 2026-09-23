@@ -23,7 +23,7 @@ export type AttackMotion =
       landingHitbox: HitboxShape;
     };
 
-export type AttackVisual = 'default' | 'dash' | 'balloon' | 'slam' | 'spring';
+export type AttackVisual = 'default' | 'dash' | 'balloon' | 'slam' | 'spring' | 'down_special';
 
 /** 通常攻撃や必殺の性能。キャラクターごとに別定義へ差し替えられる。 */
 export type AttackDefinition = {

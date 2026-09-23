@@ -20,6 +20,7 @@ export type TouchControlPlacement = {
   jump: Vec2;
   attack: Vec2;
   special: Vec2;
+  guard: Vec2;
   fontPx: number;
 };
 
@@ -39,6 +40,7 @@ export function layoutTouchControls(frame: GameFrame, gameWidth = GAME_WIDTH, ga
     x: (attack.x + jump.x) / 2,
     y: attack.y - dist * Math.sin(Math.PI / 3)
   };
+  const guard = { x: jump.x - dist, y: jump.y };
   return {
     touchRadius,
     visualRadius: touchRadius * 0.84,
@@ -49,6 +51,7 @@ export function layoutTouchControls(frame: GameFrame, gameWidth = GAME_WIDTH, ga
     jump,
     attack,
     special,
+    guard,
     fontPx: Math.max(12, g(13))
   };
 }

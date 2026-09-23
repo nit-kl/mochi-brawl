@@ -21,7 +21,8 @@ export class TouchInput implements InputSource {
   private readonly buttonPointer: Record<TouchButtonId, number | null> = {
     jump: null,
     attack: null,
-    special: null
+    special: null,
+    guard: null
   };
   private destroyed = false;
 
@@ -50,7 +51,7 @@ export class TouchInput implements InputSource {
 
   private readonly onPointerUp = (pointer: Phaser.Input.Pointer): void => {
     if (pointer.id === this.stickPointerId) this.resetStick();
-    for (const id of ['jump', 'attack', 'special'] as const) {
+    for (const id of ['jump', 'attack', 'special', 'guard'] as const) {
       if (this.buttonPointer[id] !== pointer.id) continue;
       this.buttonPointer[id] = null;
       this.view.setPressed(id, false);
@@ -94,6 +95,7 @@ export class TouchInput implements InputSource {
       jump,
       attack,
       special,
+      guard: this.buttonPointer.guard !== null,
       dodge: false
     };
   }
@@ -125,6 +127,7 @@ export class TouchInput implements InputSource {
       this.buttonPointer.jump = null;
       this.buttonPointer.attack = null;
       this.buttonPointer.special = null;
+      this.buttonPointer.guard = null;
       this.view.resetPressed();
     }
   }
@@ -132,7 +135,7 @@ export class TouchInput implements InputSource {
   private queueButton(id: TouchButtonId): void {
     if (id === 'jump') this.jumpQueued = true;
     else if (id === 'attack') this.attackQueued = true;
-    else this.specialQueued = true;
+    else if (id === 'special') this.specialQueued = true;
   }
 
   private updateStick(x: number, y: number): void {

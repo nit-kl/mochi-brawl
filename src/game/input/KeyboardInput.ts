@@ -11,6 +11,7 @@ export type KeyboardLayout = {
   down: number[];
   attack: number[];
   special: number[];
+  guard: number[];
 };
 
 const codes = Phaser.Input.Keyboard.KeyCodes;
@@ -22,7 +23,8 @@ export const PLAYER_ONE_KEYBOARD_LAYOUT: KeyboardLayout = {
   up: [codes.W],
   down: [codes.S],
   attack: [codes.J],
-  special: [codes.K]
+  special: [codes.K],
+  guard: [codes.L]
 };
 
 export const PLAYER_TWO_KEYBOARD_LAYOUT: KeyboardLayout = {
@@ -32,7 +34,8 @@ export const PLAYER_TWO_KEYBOARD_LAYOUT: KeyboardLayout = {
   up: [codes.UP],
   down: [codes.DOWN],
   attack: [codes.ENTER],
-  special: [codes.PERIOD]
+  special: [codes.PERIOD],
+  guard: [codes.FORWARD_SLASH]
 };
 
 export class KeyboardInput implements InputSource {
@@ -44,6 +47,7 @@ export class KeyboardInput implements InputSource {
   private readonly down: Phaser.Input.Keyboard.Key[];
   private readonly attack: Phaser.Input.Keyboard.Key[];
   private readonly special: Phaser.Input.Keyboard.Key[];
+  private readonly guard: Phaser.Input.Keyboard.Key[];
   private readonly captured: number[];
   private destroyed = false;
 
@@ -58,6 +62,7 @@ export class KeyboardInput implements InputSource {
       this.down = [];
       this.attack = [];
       this.special = [];
+      this.guard = [];
       this.captured = [];
       return;
     }
@@ -69,6 +74,7 @@ export class KeyboardInput implements InputSource {
     this.down = this.bind(keyboard, layout.down);
     this.attack = this.bind(keyboard, layout.attack);
     this.special = this.bind(keyboard, layout.special);
+    this.guard = this.bind(keyboard, layout.guard);
     this.captured = [
       ...layout.left,
       ...layout.right,
@@ -76,7 +82,8 @@ export class KeyboardInput implements InputSource {
       ...layout.up,
       ...layout.down,
       ...layout.attack,
-      ...layout.special
+      ...layout.special,
+      ...layout.guard
     ];
     keyboard.addCapture(this.captured);
   }
@@ -111,6 +118,7 @@ export class KeyboardInput implements InputSource {
       jump,
       attack,
       special,
+      guard: this.guard.some((key) => key.isDown),
       dodge: false
     };
   }
@@ -119,7 +127,7 @@ export class KeyboardInput implements InputSource {
     if (this.destroyed || !this.keyboard) return;
     this.destroyed = true;
     this.keyboard.removeCapture(this.captured);
-    const keys = [...this.left, ...this.right, ...this.jump, ...this.up, ...this.down, ...this.attack, ...this.special];
+    const keys = [...this.left, ...this.right, ...this.jump, ...this.up, ...this.down, ...this.attack, ...this.special, ...this.guard];
     for (const key of keys) {
       if (!this.keyboard.keys?.includes(key)) continue;
       this.keyboard.removeKey(key);

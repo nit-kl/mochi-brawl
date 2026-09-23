@@ -4,7 +4,7 @@ import type { InputSource } from './InputSource';
 import type { CpuProfile } from './CpuProfile';
 import { neutralInput, type PlayerInputState } from './PlayerInput';
 
-export type CpuStateName = 'approach' | 'attack' | 'retreat' | 'jump' | 'special';
+export type CpuStateName = 'approach' | 'attack' | 'retreat' | 'jump' | 'special' | 'guard';
 
 export type CpuSense = {
   now: number;
@@ -17,7 +17,7 @@ export type CpuSense = {
     attacking: boolean;
     stats: CharacterDefinition;
   };
-  opponent: { x: number; y: number };
+  opponent: { x: number; y: number; attacking: boolean };
   ko: { left: number; right: number };
 };
 
@@ -104,6 +104,10 @@ export class CpuInput implements InputSource {
     const absX = Math.abs(dx);
     const toward = absX < 12 ? this.heldMoveX : Math.sign(dx);
 
+    if (data.opponent.attacking && data.self.landed && absX < 125 && Math.abs(dy) < 90 && Math.random() < 0.65) {
+      return { moveX: 0, moveY: 0, jump: false, attack: false, special: false, rise: false, state: 'guard' };
+    }
+
     if (Math.random() < this.profile.mistakeChance) {
       const coast = this.heldMoveX === 0 ? toward : this.heldMoveX;
       return { moveX: coast, moveY: 0, jump: false, attack: false, special: false, rise: false, state: 'approach' };
@@ -115,6 +119,10 @@ export class CpuInput implements InputSource {
     if (clearlyAbove) {
       const vertical = this.verticalMove(data, toward, absX, dy);
       if (vertical) return vertical;
+    }
+
+    if (data.self.stats.downSpecial && absX <= close + 24 && nearHeight && Math.random() < this.profile.specialChance * 0.65) {
+      return { moveX: toward, moveY: 1, jump: false, attack: false, special: true, rise: false, state: 'special' };
     }
 
     if (absX <= close && nearHeight && Math.random() < this.profile.attackChance) {
@@ -211,6 +219,7 @@ export class CpuInput implements InputSource {
       jump,
       attack,
       special,
+      guard: this.state === 'guard',
       dodge: false
     };
   }

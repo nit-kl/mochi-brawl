@@ -19,6 +19,7 @@ export function selectCharacterAnimation(
   if (attacking && (state.attackVisual === 'balloon' || state.attackVisual === 'spring')) {
     order.push('up_special');
   }
+  if (attacking && state.attackVisual === 'down_special') order.push('down_special', 'attack');
   if (attacking && state.attackVisual === 'default') order.push('attack');
   if (!state.landed) order.push(state.velocityY < -RISING_SPEED ? 'jump' : 'fall');
   if (state.landed && Math.abs(state.velocityX) > RUN_SPEED) order.push('run');

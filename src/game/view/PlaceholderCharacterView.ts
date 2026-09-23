@@ -110,6 +110,7 @@ export class PlaceholderCharacterView implements CharacterView {
     this.slamMark.setVisible(slamming && this.shell.visible);
     this.marker.setVisible(!dashing && this.shell.visible);
     if (slamming) this.shell.setScale(1.22, 0.7);
+    else if (style === 'down_special') this.shell.setScale(1.15, 0.72);
     else if (style === 'spring') this.shell.setScale(0.84, 1.42);
     else this.shell.setScale(1, 1);
     if (dashing) this.dashOrb.rotation += 14 * dt;

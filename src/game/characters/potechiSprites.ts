@@ -96,6 +96,18 @@ export const POTECHI_SPRITES: CharacterSpriteSet = {
       footAnchor: { x: 0.5, y: (STRIP_H - 112) / STRIP_H }
     },
     {
+      name: 'down_special',
+      textureKey: 'potechi-down-special-sheet',
+      url: 'assets/characters/potechi/sprites/potechi_down_special.png',
+      frameWidth: CELL4,
+      frameHeight: STRIP_H,
+      frames: [0, 1, 2, 3],
+      frameRate: 9,
+      repeat: 0,
+      visualScale: SCALE,
+      footAnchor: { x: 0.5, y: (STRIP_H - 126) / STRIP_H }
+    },
+    {
       name: 'hit',
       textureKey: 'potechi-hit-sheet',
       url: 'assets/characters/potechi/sprites/potechi_hit.png',

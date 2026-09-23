@@ -9,6 +9,7 @@ export type PlayerInputState = {
   jump: boolean;
   attack: boolean;
   special: boolean;
+  guard: boolean;
   dodge: boolean;
 };
 
@@ -19,6 +20,7 @@ export function neutralInput(): PlayerInputState {
     jump: false,
     attack: false,
     special: false,
+    guard: false,
     dodge: false
   };
 }
@@ -44,6 +46,7 @@ export class PlayerInput {
     let jump = false;
     let attack = false;
     let special = false;
+    let guard = false;
     let dodge = false;
 
     for (const source of this.sources) {
@@ -53,6 +56,7 @@ export class PlayerInput {
       jump = jump || state.jump;
       attack = attack || state.attack;
       special = special || state.special;
+      guard = guard || state.guard;
       dodge = dodge || state.dodge;
     }
 
@@ -62,6 +66,7 @@ export class PlayerInput {
       jump,
       attack,
       special,
+      guard,
       dodge
     };
   }

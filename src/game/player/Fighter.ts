@@ -2,7 +2,7 @@ import type Phaser from 'phaser';
 import { AttackController } from '../combat/AttackController';
 import type { HitResult } from '../combat/HitResult';
 import { Hurtbox } from '../combat/Hurtbox';
-import { UP_SPECIAL_INPUT, type CharacterDefinition } from '../characters/CharacterDefinition';
+import { DOWN_SPECIAL_INPUT, UP_SPECIAL_INPUT, type CharacterDefinition } from '../characters/CharacterDefinition';
 import type { PlayerInputState } from '../input/PlayerInput';
 import type { CharacterView, CharacterViewState } from '../view/CharacterAnimation';
 import { PlaceholderCharacterView } from '../view/PlaceholderCharacterView';
@@ -13,6 +13,11 @@ const BODY_WIDTH = 56;
 const BODY_HEIGHT = 72;
 /** 被弾の白い点滅。判定や硬直時間とは別。 */
 const HIT_FLASH_MS = 100;
+const GUARD_MAX = 100;
+const GUARD_DRAIN_PER_SECOND = 24;
+const GUARD_RECOVERY_PER_SECOND = 28;
+const GUARD_HIT_COST = 34;
+const GUARD_BREAK_MS = 900;
 
 /** 1人分のキャラクター。入力・攻撃・被弾判定を組み立てる。 */
 export class Fighter {
@@ -22,6 +27,10 @@ export class Fighter {
   readonly attack: AttackController;
   readonly stats: CharacterDefinition;
   private readonly view: CharacterView;
+  private readonly guardRing: Phaser.GameObjects.Arc;
+  private guardMeter = GUARD_MAX;
+  private guarding = false;
+  private guardBrokenUntil = 0;
   damagePercent = 0;
   alive = true;
   private flashUntil = 0;
@@ -41,10 +50,13 @@ export class Fighter {
     this.upSpecialRemaining = stats.upSpecial ? 1 : 0;
     this.character = new PlaceholderPlayer(scene, x, y, stats.gravityScale);
     const feetY = y + BODY_HEIGHT / 2;
-    this.view = stats.spriteSet
+    const idleKey = stats.spriteSet?.anims.find((anim) => anim.name === 'idle')?.textureKey;
+    this.view = stats.spriteSet && idleKey && scene.textures.exists(idleKey)
       ? new SpriteCharacterView(scene, stats.spriteSet, x, feetY)
       : new PlaceholderCharacterView(scene, x, feetY, color, stats.look);
     this.attack = new AttackController(scene, stats.normalAttack);
+    this.guardRing = scene.add.circle(x, y, 47, 0x50d6c5, 0.18);
+    this.guardRing.setStrokeStyle(5, 0x89fff1, 0.85).setDepth(5).setVisible(false);
     this.syncView(0, 0);
   }
 
@@ -77,9 +89,10 @@ export class Fighter {
         ? 'knockback-locked'
         : 'knockback-air';
     if (input.moveY >= UP_SPECIAL_INPUT) this.jumpedFromHeldUp = false;
+    this.updateGuard(input, dt, now, mode === 'normal');
 
-    const canAct = this.attack.allowsMovement() && mode !== 'knockback-locked';
-    this.character.applyInput(input, this.attack.allowsMovement(), mode, dt, this.stats, false);
+    const canAct = this.attack.allowsMovement() && mode !== 'knockback-locked' && !this.guarding;
+    this.character.applyInput(input, this.attack.allowsMovement() && !this.guarding, mode, dt, this.stats, false);
     const specialStarted = this.tryUseMove(input, now);
     if (specialStarted && this.jumpedFromHeldUp) {
       this.jumpsRemaining = Math.min(this.stats.maxJumps, this.jumpsRemaining + 1);
@@ -107,6 +120,7 @@ export class Fighter {
 
   /** 必殺系を開始できたフレームだけ true。そのフレームのジャンプは消費しない。 */
   private tryUseMove(input: PlayerInputState, now: number): boolean {
+    if (this.guarding) return false;
     if (input.attack) {
       this.attack.tryStart(now, this.stats.normalAttack, this.character.facing);
       return false;
@@ -120,11 +134,23 @@ export class Fighter {
       return true;
     }
 
+    if (input.moveY > DOWN_SPECIAL_INPUT && this.stats.downSpecial) {
+      return this.attack.tryStart(now, this.stats.downSpecial, this.character.facing);
+    }
+
     if (!this.stats.specialAttack) return false;
     return this.attack.tryStart(now, this.stats.specialAttack, this.character.facing);
   }
 
-  applyHitResult(result: HitResult, now: number): void {
+  applyHitResult(result: HitResult, now: number): boolean {
+    if (this.guarding) {
+      this.guardMeter = Math.max(0, this.guardMeter - GUARD_HIT_COST);
+      if (this.guardMeter > 0) {
+        this.syncGuardView();
+        return false;
+      }
+      this.breakGuard(now);
+    }
     this.damagePercent += result.damage;
     this.isInKnockback = true;
     this.knockbackUntil = now + result.attack.knockbackLockMs;
@@ -132,10 +158,13 @@ export class Fighter {
     this.attack.cancel();
     this.flashUntil = now + HIT_FLASH_MS;
     this.syncView(0, now);
+    return true;
   }
 
   resetDamage(): void {
     this.damagePercent = 0;
+    this.guardMeter = GUARD_MAX;
+    this.guarding = false;
     this.isInKnockback = false;
     this.knockbackUntil = 0;
   }
@@ -148,6 +177,9 @@ export class Fighter {
     this.jumpsRemaining = this.stats.maxJumps;
     this.upSpecialRemaining = this.stats.upSpecial ? 1 : 0;
     this.wasLanded = false;
+    this.guardMeter = GUARD_MAX;
+    this.guarding = false;
+    this.guardBrokenUntil = 0;
     this.jumpedFromHeldUp = false;
     this.attack.cancel();
     this.character.place(x, y);
@@ -160,10 +192,12 @@ export class Fighter {
     this.attack.cancel();
     this.character.eliminate();
     this.view.hide();
+    this.guardRing.setVisible(false);
   }
 
   setAlpha(alpha: number): void {
     this.view.setAlpha(alpha);
+    this.guardRing.setAlpha(alpha);
   }
 
   animationDebugText(): string {
@@ -171,6 +205,7 @@ export class Fighter {
   }
 
   private syncView(dt: number, now: number): void {
+    this.syncGuardView();
     const state: CharacterViewState = {
       x: this.character.x,
       bodyY: this.character.y,
@@ -192,5 +227,27 @@ export class Fighter {
       flashing: now < this.flashUntil
     };
     this.view.sync(state);
+  }
+
+  private updateGuard(input: PlayerInputState, dt: number, now: number, canAct: boolean): void {
+    const wantsGuard = input.guard && canAct && this.character.isLanded && this.attack.currentPhase === 'idle';
+    this.guarding = wantsGuard && now >= this.guardBrokenUntil && this.guardMeter > 0;
+    if (this.guarding) {
+      this.guardMeter = Math.max(0, this.guardMeter - GUARD_DRAIN_PER_SECOND * dt);
+      if (this.guardMeter === 0) this.breakGuard(now);
+    } else if (now >= this.guardBrokenUntil) {
+      this.guardMeter = Math.min(GUARD_MAX, this.guardMeter + GUARD_RECOVERY_PER_SECOND * dt);
+    }
+  }
+
+  private breakGuard(now: number): void {
+    this.guarding = false;
+    this.guardBrokenUntil = now + GUARD_BREAK_MS;
+  }
+
+  private syncGuardView(): void {
+    this.guardRing.setPosition(this.x, this.y);
+    this.guardRing.setVisible(this.alive && this.guarding);
+    this.guardRing.setStrokeStyle(5, 0x89fff1, 0.3 + 0.55 * this.guardMeter / GUARD_MAX);
   }
 }

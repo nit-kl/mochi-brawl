@@ -13,10 +13,12 @@ public/assets/
 │  │  ├─ concept/
 │  │  ├─ sprites/
 │  │  └─ portraits/
-│  └─ potechi/
-│     ├─ concept/
-│     ├─ sprites/
-│     └─ portraits/
+│  ├─ potechi/
+│  │  ├─ concept/
+│  │  ├─ sprites/
+│  │  └─ portraits/
+│  ├─ kerotan/      (concept/ portraits/ sprites/)
+│  └─ botero/       (concept/ portraits/ sprites/)
 ├─ stages/
 │  └─ ohirune-meadow/
 │     ├─ concept/
@@ -38,6 +40,9 @@ public/assets/
 - `mochimaru_action_sheet.png`
 - `potechi_character_sheet.png`
 - `ohirune_meadow_stage_sheet.png`
+- `kerotan/concept/chatgpt_reference_sheet.png`（提供画像。けろたん・ぼてろ共通の参照）
+- `kerotan/concept/clean_action_sheet.png` と `botero/concept/clean_action_sheet.png`（透過8ポーズ原画）
+- `kerotan/concept/normal_attack_poses.png`（通常攻撃の殴り・蹴りポーズ）
 
 ## 4. 実ゲーム用キャラクター素材
 
@@ -49,6 +54,39 @@ public/assets/
 - フレームの外にはみ出さない
 - 接地するコマは足元の余白を揃える
 - 右向きだけ。左向きはゲーム側で反転する
+
+### 4キャラ共通の画像差し替え先
+
+各 `public/assets/characters/{id}/` に `concept/`、`portraits/`、`sprites/` を用意してある。`concept/` は設定画用で、ゲームでは読み込まない。`portraits/select.png` はキャラ選択カード、`portraits/hud.png` は対戦 HUD の顔アイコン。未配置なら、それぞれ既存スプライトまたは色付き Placeholder カード、色丸マーカーへ戻る。画像の有無はビルド時に判定するため、追加後は開発サーバーを再起動する。
+
+けろたん・ぼてろ（`kerotan`、`botero`）の `sprites/` は次のファイル名を使う。PNG は透過、右向き、横4コマ。通常攻撃と横必殺は各コマ **384×256 px**（画像全体 1536×256 px）、それ以外は各コマ **256×256 px**（画像全体 1024×256 px）。別のコマ寸法やフレーム数なら `src/game/characters/optionalSprites.ts` の定義を合わせる。足元は各コマの下端に揃える。
+
+| キャラID | `portraits/` に置くファイル | `sprites/` に置くファイル |
+| --- | --- | --- |
+| `mochimaru` | `select.png`, `hud.png` | 下の「もちまる」表を参照（`mochimaru_*.png`） |
+| `potechi` | `select.png`, `hud.png` | 下の「ぽてち」表を参照（`potechi_*.png`） |
+| `kerotan` | `select.png`, `hud.png` | 下の共通8ファイル |
+| `botero` | `select.png`, `hud.png` | 下の共通8ファイル |
+
+| ファイル | 用途 |
+| --- | --- |
+| `idle.png` | 待機。スプライト表示を有効にする必須画像 |
+| `run.png` | 走り |
+| `jump.png` | 上昇 |
+| `fall.png` | 落下 |
+| `attack.png` | 通常攻撃 |
+| `special.png` | 横必殺・突進 |
+| `up_special.png` | 上必殺 |
+| `hit.png` | 被弾 |
+| `down_special.png` | 下必殺（任意）。無い場合は `attack.png` を表示 |
+
+提供画像を参照して、けろたん・ぼてろの透過8ポーズ原画を作り、`tools/build-character-sprites.ps1` で8種類のスプライトと `select.png`（256×256）、`hud.png`（128×128）へ書き出した。動作シートは専用ポーズを中心に4コマへ組み合わせた初期版で、走りなどは同じポーズに小さな位置変化を付けている。
+
+けろたんの `attack.png` は `normal_attack_poses.png` の殴り・蹴りから作る。舌を伸ばすポーズは `special.png` のみに使う。
+
+下必殺用の専用画像は未配置。将来追加する場合、けろたん・ぼてろは `sprites/down_special.png`（横4コマ、各384×256px）、もちまるは `sprites/mochimaru_down_special.png`（横4コマ、各543×724px）、ぽてちは `sprites/potechi_down_special.png`（横4コマ、各543×724px）を使う。
+
+`idle.png` が無い場合は対戦中に全身 Placeholder を使う。`idle.png` だけある場合、未配置の動作は待機画像へ戻る。もちまる・ぽてちの既存スプライト名と個別の表示定義は下記のまま使う。
 
 ### もちまる（Milestone 09-A）
 

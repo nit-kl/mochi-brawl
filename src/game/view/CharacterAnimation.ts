@@ -6,6 +6,7 @@ export type CharacterAnimationName =
   | 'special_roll'
   | 'special_slam'
   | 'up_special'
+  | 'down_special'
   | 'attack'
   | 'jump'
   | 'fall'

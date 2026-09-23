@@ -92,6 +92,18 @@ export const MOCHIMARU_SPRITES: CharacterSpriteSet = {
       footAnchor: { x: 0.5, y: (RUN_FRAME - 33) / RUN_FRAME }
     },
     {
+      name: 'down_special',
+      textureKey: 'mochimaru-down-special-sheet',
+      url: 'assets/characters/mochimaru/sprites/mochimaru_down_special.png',
+      frameWidth: ATTACK_FRAME_W,
+      frameHeight: ATTACK_FRAME_H,
+      frames: [0, 1, 2, 3],
+      frameRate: 10,
+      repeat: 0,
+      visualScale: 80 / 450,
+      footAnchor: { x: 0.5, y: (ATTACK_FRAME_H - 120) / ATTACK_FRAME_H }
+    },
+    {
       name: 'hit',
       textureKey: 'mochimaru-hit-sheet',
       url: 'assets/characters/mochimaru/sprites/mochimaru_hit.png',

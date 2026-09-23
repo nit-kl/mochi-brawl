@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { portraitKey } from '../characters/characterAssets';
 
 const PANEL_W = 248;
 const PANEL_H = 128;
@@ -12,6 +13,7 @@ type SlotParts = BattleHudSlot & {
   percent: Phaser.GameObjects.Text;
   stocks: Phaser.GameObjects.Arc[];
   marker: number;
+  baseColor: string;
 };
 
 /** 左上と右上の対戦 HUD。ストック数やダメージ計算は持たない。 */
@@ -21,7 +23,7 @@ export class BattleHud {
 
   constructor(
     scene: Phaser.Scene,
-    players: readonly { name: string; marker: number; nameColor: string }[]
+    players: readonly { name: string; characterId: string; marker: number; nameColor: string }[]
   ) {
     this.parts = players.map((player, index) => this.createSlot(scene, player, index === 1));
     this.slots = this.parts;
@@ -30,7 +32,7 @@ export class BattleHud {
   refresh(index: number, stocks: number, percent: number): void {
     const slot = this.parts[index];
     if (!slot) return;
-    const look = percentLook(percent, slot.marker);
+    const look = percentLook(percent, slot.baseColor);
     slot.percent.setText(`${percent}%`);
     slot.percent.setColor(look.color);
     slot.percent.setFontSize(look.size);
@@ -44,7 +46,7 @@ export class BattleHud {
 
   private createSlot(
     scene: Phaser.Scene,
-    player: { name: string; marker: number; nameColor: string },
+    player: { name: string; characterId: string; marker: number; nameColor: string },
     alignRight: boolean
   ): SlotParts {
     const root = scene.add.container(0, 0).setScrollFactor(0).setDepth(1500);
@@ -58,8 +60,15 @@ export class BattleHud {
     root.add(panel);
 
     const markerX = alignRight ? -34 : 34;
-    const marker = scene.add.circle(markerX, 32, 16, player.marker);
-    marker.setStrokeStyle(3, 0xffffff, 1);
+    const portrait = portraitKey(player.characterId, 'hud');
+    let marker: Phaser.GameObjects.Image | Phaser.GameObjects.Arc;
+    if (scene.textures.exists(portrait)) {
+      const image = scene.add.image(markerX, 32, portrait);
+      image.setScale(Math.min(36 / image.width, 36 / image.height));
+      marker = image;
+    } else {
+      marker = scene.add.circle(markerX, 32, 16, player.marker).setStrokeStyle(3, 0xffffff, 1);
+    }
     const name = scene.add
       .text(alignRight ? -58 : 58, 16, player.name, {
         fontFamily: 'sans-serif',
@@ -85,13 +94,12 @@ export class BattleHud {
       })
       .setOrigin(alignRight ? 1 : 0, 1);
     root.add(percent);
-    return { root, percent, stocks, marker: player.marker };
+    return { root, percent, stocks, marker: player.marker, baseColor: player.nameColor };
   }
 }
 
-function percentLook(percent: number, marker: number): { color: string; size: number; bold: boolean } {
+function percentLook(percent: number, baseColor: string): { color: string; size: number; bold: boolean } {
   if (percent >= 100) return { color: '#d01212', size: 54, bold: true };
   if (percent >= 50) return { color: '#e07a00', size: 46, bold: true };
-  const color = marker === 0xf08a5d ? '#8a3d16' : '#1d4e89';
-  return { color, size: 40, bold: false };
+  return { color: baseColor, size: 40, bold: false };
 }

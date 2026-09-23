@@ -89,5 +89,11 @@ export const POTECHI: CharacterDefinition = {
   spriteSet: POTECHI_SPRITES,
   normalAttack: DOSU,
   specialAttack: DOSSUN,
-  upSpecial: BANE
+  upSpecial: BANE,
+  downSpecial: {
+    id: 'potechi-stomp', startupMs: 170, activeMs: 140, recoveryMs: 300,
+    canMoveDuringAttack: false, hitbox: { forward: 4, width: 112, height: 38, offsetY: 29 },
+    damage: 12, baseKnockback: 460, knockbackScaling: 9,
+    knockbackAngleDegrees: 55, knockbackLockMs: 450, motion: null, visual: 'down_special'
+  }
 };

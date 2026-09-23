@@ -26,7 +26,9 @@ export type CharacterDefinition = {
   normalAttack: AttackDefinition;
   specialAttack: AttackDefinition | null;
   upSpecial: AttackDefinition | null;
+  downSpecial: AttackDefinition | null;
 };
 
 /** スティックや上キーが、これより上向きなら上必殺。 */
 export const UP_SPECIAL_INPUT = -0.5;
+export const DOWN_SPECIAL_INPUT = 0.5;

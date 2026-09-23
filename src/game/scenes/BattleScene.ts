@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { profileById, type CharacterProfile } from '../characters/roster';
+import { preloadCharacterPortrait } from '../characters/characterAssets';
 import { createHitResult } from '../combat/HitResult';
 import { resolveHits } from '../combat/resolveHits';
 import { CombatDebugOverlay } from '../debug/CombatDebugOverlay';
@@ -59,8 +60,12 @@ export class BattleScene extends Phaser.Scene {
 
   preload(): void {
     preloadListedStage(this, this.stageDefinition.id);
+    const queued = new Set<string>();
     for (const entry of this.players) {
+      if (queued.has(entry.character.id)) continue;
+      queued.add(entry.character.id);
       if (entry.character.spriteSet) preloadCharacterSprites(this, entry.character.spriteSet);
+      preloadCharacterPortrait(this, entry.character.id, 'hud');
     }
   }
 
@@ -94,6 +99,7 @@ export class BattleScene extends Phaser.Scene {
       this,
       this.players.map((entry) => ({
         name: entry.character.displayName,
+        characterId: entry.character.id,
         marker: entry.marker,
         nameColor: entry.nameColor
       }))
@@ -147,7 +153,7 @@ export class BattleScene extends Phaser.Scene {
         defender.weight,
         attacker.character.facing
       );
-      defender.applyHitResult(result, time);
+      if (!defender.applyHitResult(result, time)) continue;
       this.hitEffects.spawn((attacker.x + defender.x) / 2, (attacker.y + defender.y) / 2, result.attack.visual, time);
       console.log(
         `${attacker.displayName} ${result.attack.id} hit ${defender.displayName}: ${defender.damagePercent}% knockback ${Math.round(result.knockback)}`
@@ -205,7 +211,7 @@ export class BattleScene extends Phaser.Scene {
         attacking: self.attack.currentPhase !== 'idle',
         stats: self.stats
       },
-      opponent: { x: opponent.x, y: opponent.y },
+      opponent: { x: opponent.x, y: opponent.y, attacking: opponent.attack.currentPhase !== 'idle' },
       ko: this.stage.currentKoBounds()
     });
   }
