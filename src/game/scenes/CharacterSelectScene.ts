@@ -167,6 +167,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     const previous = loadMatchSetup(this);
     const opponent = opponentProfile(selected.character.id);
     saveMatchSetup(this, {
+      mode: previous.mode,
       player1CharacterId: selected.character.id,
       player2CharacterId: opponent.character.id,
       stageId: previous.stageId

@@ -14,7 +14,7 @@ export type CharacterProfile = {
 export const CHARACTER_ROSTER: readonly CharacterProfile[] = [
   {
     character: MOCHIMARU,
-    blurb: 'バランス型 / 復帰が得意',
+    blurb: 'バランス型 / 空中戦が得意',
     marker: 0x4c8dff,
     nameColor: '#1d4e89',
     bodyColor: 0x6aa6ff
@@ -32,7 +32,7 @@ export function profileById(id: string): CharacterProfile {
   return CHARACTER_ROSTER.find((entry) => entry.character.id === id) ?? CHARACTER_ROSTER[0];
 }
 
-/** 1P が選ばなかった側。3人目以降の選択 UI はまだ無い。 */
+/** 1P が選ばなかった側。CPU対戦もローカル2Pもここだけを使う。3人目以降の選択 UI はまだ無い。 */
 export function opponentProfile(selectedId: string): CharacterProfile {
   return CHARACTER_ROSTER.find((entry) => entry.character.id !== selectedId) ?? CHARACTER_ROSTER[0];
 }

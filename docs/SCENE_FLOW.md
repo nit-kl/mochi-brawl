@@ -4,7 +4,7 @@
 
 ## Scene
 
-1. `TitleScene` — 「もちブロウル」と「はじめる」。Enter、クリック、タップで次へ
+1. `TitleScene` — スマホは「はじめる」で CPU 対戦。PC は「ひとりで」または「ふたりで」
 2. `CharacterSelectScene` — 1P のキャラクター。プレビューは idle
 3. `StageSelectScene` — `STAGE_LISTINGS` のステージ。今はおひるね草原
 4. `BattleScene` — 選択結果で Fighter とステージを作る
@@ -13,13 +13,23 @@
 
 ## 選択結果
 
-`MatchSetup` を Phaser の registry に保存する。中身は `player1CharacterId`、`player2CharacterId`、`stageId`。
+`MatchSetup` を Phaser の registry に保存する。
 
-1P が選んだキャラクターが Player 1。Player 2 はロスターの残り。もちまるを選ぶと 2P はぽてち、ぽてちを選ぶと 2P はもちまる。
+- `mode`: `cpu` または `local_vs`
+- `player1CharacterId`
+- `player2CharacterId`
+- `stageId`
 
-`BattleScene` は起動時にこの結果を読み、左を 1P、右を 2P として出す。操作はこれまでどおり、1P がキーボードとタッチ、2P が矢印キー。
+1P が選んだキャラクターが Player 1。Player 2 は `opponentProfile` の戻り値。もちまるを選ぶと 2P はぽてち、ぽてちを選ぶと 2P はもちまる。CPU 対戦でも同じ関数を使う。
+
+`cpu` の 2P は `CpuInput`。`local_vs` の 2P は矢印キー。1P はどちらもキーボードと、タッチ端末ではタッチ。
 
 ## 操作
+
+タイトル（PC）:
+
+- ← → で「ひとりで」「ふたりで」
+- Enter で決定。ボタンのクリックでも決まる
 
 キャラクター選択とステージ選択:
 
@@ -34,4 +44,4 @@
 
 ## ステージを足すとき
 
-`STAGE_LISTINGS` に `StageDefinition` とプレビュー画像を足す。選択画面のカードはその配列の長さで並ぶ。おひるね草原の当たり判定と縮小は `StageDefinition` のまま。
+`STAGE_LISTINGS` に `StageDefinition` とプレビュー画像を足す。選択画面のカードはその配列の長さで並ぶ。おひるね草原の当たり判定は `StageDefinition` のまま。試合中にステージは狭くしない。

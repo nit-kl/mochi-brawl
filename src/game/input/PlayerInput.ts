@@ -28,7 +28,7 @@ function clampUnit(value: number): number {
 }
 
 /**
- * KeyboardInput / TouchInput / 将来の GamepadInput を1つの PlayerInputState にまとめる。
+ * KeyboardInput / TouchInput / CpuInput を1つの PlayerInputState にまとめる。
  * read() は1フレームに1回だけ呼ぶ。jump、attack、special は押したフレームだけ true になる。
  */
 export class PlayerInput {

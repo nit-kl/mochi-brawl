@@ -8,7 +8,7 @@ export type MatchAction =
   | { type: 'respawn'; index: number }
   | { type: 'eliminated'; index: number };
 
-/** ストックと四方向の KO 境界。キャラクターの移動や入力は持たない。 */
+/** ストックと、その時点で有効な KO 境界。キャラクターの移動や入力は持たない。 */
 export class StockMatch {
   private readonly stocks: number[];
   private readonly invulnerableUntil: number[];

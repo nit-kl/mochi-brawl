@@ -3,10 +3,12 @@ import { profileById, type CharacterProfile } from '../characters/roster';
 import { createHitResult } from '../combat/HitResult';
 import { resolveHits } from '../combat/resolveHits';
 import { CombatDebugOverlay } from '../debug/CombatDebugOverlay';
-import { loadMatchSetup } from '../flow/MatchSetup';
+import { loadMatchSetup, type MatchMode } from '../flow/MatchSetup';
+import { CpuInput } from '../input/CpuInput';
+import { NORMAL_CPU } from '../input/CpuProfile';
 import { createPlayerInput } from '../input/createPlayerInput';
 import { PLAYER_TWO_KEYBOARD_LAYOUT } from '../input/KeyboardInput';
-import type { PlayerInput } from '../input/PlayerInput';
+import { PlayerInput } from '../input/PlayerInput';
 import { StockMatch, STARTING_STOCKS, type MatchAction } from '../match/StockMatch';
 import { Fighter } from '../player/Fighter';
 import { preloadListedStage, resolveStage } from '../stage/stageCatalog';
@@ -39,6 +41,8 @@ export class BattleScene extends Phaser.Scene {
   private stage!: StageRuntime;
   private stageDefinition: StageDefinition = resolveStage('ohirune_meadow');
   private players: CharacterProfile[] = [];
+  private matchMode: MatchMode = 'local_vs';
+  private cpu: CpuInput | null = null;
   private startedAt: number | null = null;
   private leaving = false;
 
@@ -48,6 +52,7 @@ export class BattleScene extends Phaser.Scene {
 
   init(): void {
     const setup = loadMatchSetup(this);
+    this.matchMode = setup.mode;
     this.stageDefinition = resolveStage(setup.stageId);
     this.players = [profileById(setup.player1CharacterId), profileById(setup.player2CharacterId)];
   }
@@ -61,6 +66,7 @@ export class BattleScene extends Phaser.Scene {
 
   create(): void {
     this.leaving = false;
+    this.cpu = null;
     this.cameras.main.setScroll(0, 0);
     this.input.mouse?.disableContextMenu();
 
@@ -79,10 +85,7 @@ export class BattleScene extends Phaser.Scene {
       if (!spawn || !respawn) return;
       const id = (index + 1) as 1 | 2;
       const fighter = new Fighter(this, id, spawn.x, spawn.y, entry.bodyColor, entry.character);
-      const input = createPlayerInput(
-        this,
-        index === 0 ? { touch: true } : { layout: PLAYER_TWO_KEYBOARD_LAYOUT, touch: false }
-      );
+      const input = this.createSlotInput(index);
       this.slots.push({ fighter, input, respawnX: respawn.x, respawnY: respawn.y });
     });
     this.stage.bind(this.slots.map((slot) => slot.fighter.character.object));
@@ -99,7 +102,7 @@ export class BattleScene extends Phaser.Scene {
     this.hitEffects = new HitEffectView(this);
     this.resultView = new MatchResultView(this);
     this.refreshHud();
-    this.debugOverlay = new CombatDebugOverlay(this, this.stageDefinition.koBounds);
+    this.debugOverlay = new CombatDebugOverlay(this);
 
     const keyboard = this.input.keyboard;
     this.restartKey = keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.R) ?? null;
@@ -128,6 +131,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.debugKey && Phaser.Input.Keyboard.JustDown(this.debugKey)) this.debugEnabled = !this.debugEnabled;
     this.stage.update(elapsed);
+    this.feedCpu(time);
 
     for (const slot of this.slots) slot.fighter.update(slot.input.read(), time);
 
@@ -150,10 +154,11 @@ export class BattleScene extends Phaser.Scene {
       );
     }
 
+    const koBounds = this.stage.currentKoBounds();
     const actions = this.match.update(
       time,
       this.slots.map((slot) => ({ x: slot.fighter.x, y: slot.fighter.y })),
-      this.stage.definition.koBounds
+      koBounds
     );
     this.applyActions(actions, time);
     this.refreshHud();
@@ -165,12 +170,45 @@ export class BattleScene extends Phaser.Scene {
       .map((slot) => slot.fighter.animationDebugText())
       .filter((line) => line.length > 0)
       .join('\n');
-    const stageLine = [this.stage.debugText(elapsed), animationLine].filter((line) => line.length > 0).join('\n');
+    const cpuLine = this.matchMode === 'cpu' ? (this.cpu?.debugText() ?? '') : '';
+    const stageLine = [this.stage.debugText(elapsed), animationLine, cpuLine].filter((line) => line.length > 0).join('\n');
     this.debugOverlay.draw(
       this.debugEnabled,
       this.slots.map((slot) => slot.fighter.hurtbox.bounds(slot.fighter.x, slot.fighter.y)),
+      koBounds,
       stageLine
     );
+  }
+
+  private createSlotInput(index: number): PlayerInput {
+    if (index === 0) return createPlayerInput(this, { touch: true });
+    if (this.matchMode === 'cpu') {
+      this.cpu = new CpuInput(NORMAL_CPU);
+      return new PlayerInput([this.cpu]);
+    }
+    return createPlayerInput(this, { layout: PLAYER_TWO_KEYBOARD_LAYOUT, touch: false });
+  }
+
+  private feedCpu(now: number): void {
+    const cpu = this.cpu;
+    const self = this.slots[1]?.fighter;
+    const opponent = this.slots[0]?.fighter;
+    if (!cpu || !self || !opponent) return;
+    cpu.sense({
+      now,
+      self: {
+        x: self.x,
+        y: self.y,
+        velocityX: self.character.velocityX,
+        velocityY: self.character.velocityY,
+        landed: self.character.isLanded,
+        attacking: self.attack.currentPhase !== 'idle',
+        stats: self.stats
+      },
+      opponent: { x: opponent.x, y: opponent.y },
+      platforms: this.stage.livePlatforms(),
+      ko: this.stage.currentKoBounds()
+    });
   }
 
   private applyActions(actions: MatchAction[], time: number): void {

@@ -68,7 +68,8 @@ export class StageArtView {
     const sourceW = this.center.texW;
     const shown = Math.min(sourceW, centerW / scale);
     const inset = (sourceW - shown) / 2;
-    const top = centerY - height / 2 - (MAIN_GRASS_Y - MAIN_CROP_Y) * scale;
+    const surfaceY = centerY - height / 2;
+    const top = surfaceY - (MAIN_GRASS_Y - MAIN_CROP_Y) * scale;
     const left = centerX - width / 2;
     this.place(this.leftCap, this.leftCap.texX, this.leftCap.texW, left, top);
     this.place(this.center, this.center.texX + inset, shown, left + capW, top);
@@ -83,10 +84,6 @@ export class StageArtView {
     art.image.setAlpha(alpha);
     art.image.setScale(scale);
     art.image.setPosition(centerX, centerY - height / 2);
-  }
-
-  hideSide(id: string): void {
-    this.floats[id]?.image.setVisible(false);
   }
 
   private slice(scene: Phaser.Scene, texX: number, texW: number): Slice {

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import type { ShrinkPhase, StageDefinition } from './StageDefinition';
-import { resolveShrinkPhases } from './shrinkSchedule';
+import type { KoBounds } from './KoBounds';
+import type { StageDefinition } from './StageDefinition';
 import { StageArtView } from './StageArtView';
 
 type LivePlatform = {
@@ -12,27 +12,17 @@ type LivePlatform = {
   baseY: number;
   width: number;
   height: number;
-  gone: boolean;
+  visualWidth: number;
 };
 
-export type StageDebugSnapshot = {
-  elapsedSec: number;
-  phase: 0 | 1 | 2;
-  nextShrinkSec: number | null;
-};
-
-/** 定義から足場を作り、経過時間で Phase を進める。キャラクターは動かさない。 */
+/** 定義から足場を作る。経過時間では足場も KO 境界も変えない。 */
 export class StageRuntime {
   readonly definition: StageDefinition;
-  private readonly phases: ShrinkPhase[];
   private readonly platforms: LivePlatform[];
-  private readonly warning: Phaser.GameObjects.Text;
   private readonly art: StageArtView;
-  private mainFinished = false;
 
   constructor(private readonly scene: Phaser.Scene, definition: StageDefinition) {
     this.definition = definition;
-    this.phases = resolveShrinkPhases(definition);
     this.platforms = definition.platforms.map((platform) => {
       const rect = scene.add.rectangle(platform.x, platform.y, platform.width, platform.height, platform.color);
       rect.setVisible(false);
@@ -46,24 +36,12 @@ export class StageRuntime {
         baseY: platform.y,
         width: platform.width,
         height: platform.height,
-        gone: false
+        visualWidth: platform.visualWidth ?? platform.width
       };
     });
     const main = this.platforms.find((platform) => platform.kind === 'main');
-    this.art = new StageArtView(scene, main?.width ?? 820);
-    for (const platform of this.platforms) this.syncArt(platform, 1);
-    this.warning = scene.add
-      .text(640, 112, '', {
-        fontFamily: 'sans-serif',
-        fontSize: '32px',
-        color: '#1a1a1a',
-        stroke: '#f4fbff',
-        strokeThickness: 6
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(1400)
-      .setVisible(false);
+    this.art = new StageArtView(scene, main?.visualWidth ?? 820);
+    for (const platform of this.platforms) this.syncArt(platform);
   }
 
   bind(bodies: readonly Phaser.GameObjects.GameObject[]): void {
@@ -74,105 +52,39 @@ export class StageRuntime {
     }
   }
 
-  update(elapsedMs: number): void {
-    this.playSideDismiss(elapsedMs);
-    this.playMainShrink(elapsedMs);
-    this.refreshWarning(elapsedMs);
+  update(_elapsedMs: number): void {}
+
+  /** 定義どおりの KO 境界。試合中は動かさない。 */
+  currentKoBounds(): KoBounds {
+    return this.definition.koBounds;
   }
 
-  hideWarning(): void {
-    this.warning.setVisible(false);
-  }
+  hideWarning(): void {}
 
-  snapshot(elapsedMs: number): StageDebugSnapshot {
-    const elapsedSec = elapsedMs / 1000;
-    const dropAt = this.phase('drop-sides')?.startSec ?? Number.POSITIVE_INFINITY;
-    const shrinkAt = this.phase('shrink-main')?.startSec ?? Number.POSITIVE_INFINITY;
-    const phase: 0 | 1 | 2 = elapsedSec >= shrinkAt ? 2 : elapsedSec >= dropAt ? 1 : 0;
-    const nextShrinkSec = phase === 0 ? dropAt : phase === 1 ? shrinkAt : null;
-    return { elapsedSec, phase, nextShrinkSec };
+  /** 今ある足場。試合中に消えない。 */
+  livePlatforms(): { kind: 'main' | 'side'; centerX: number; top: number; left: number; right: number }[] {
+    return this.platforms.map((platform) => {
+      const width = platform.rect.width;
+      const centerX = platform.rect.x;
+      return {
+        kind: platform.kind,
+        centerX,
+        top: platform.rect.y - platform.height / 2,
+        left: centerX - width / 2,
+        right: centerX + width / 2
+      };
+    });
   }
 
   debugText(elapsedMs: number): string {
-    const info = this.snapshot(elapsedMs);
-    const next = info.nextShrinkSec === null ? 'なし' : `${info.nextShrinkSec.toFixed(1)}秒`;
-    return `経過 ${info.elapsedSec.toFixed(1)}秒  Phase ${info.phase}  次の縮小 ${next}`;
+    return `経過 ${(elapsedMs / 1000).toFixed(1)}秒`;
   }
 
-  private playSideDismiss(elapsedMs: number): void {
-    const phase = this.phase('drop-sides');
-    if (!phase || elapsedMs < phase.startSec * 1000) return;
-    const duration = Math.max(phase.durationSec * 1000, 1);
-    const t = clamp01((elapsedMs - phase.startSec * 1000) / duration);
-    for (const platform of this.platforms) {
-      if (platform.kind !== 'side' || platform.gone) continue;
-      if (t >= 1) {
-        this.removePlatform(platform);
-        continue;
-      }
-      const shake = Math.sin(elapsedMs / 42) * 6;
-      const drop = t * 22;
-      const blink = Math.floor(elapsedMs / 90) % 2 === 0 ? 1 : 0.3;
-      platform.rect.setPosition(platform.baseX + shake, platform.baseY + drop);
-      platform.body.updateFromGameObject();
-      this.syncArt(platform, (1 - t) * blink);
-    }
-  }
-
-  private playMainShrink(elapsedMs: number): void {
-    const phase = this.phase('shrink-main');
-    const main = this.platforms.find((platform) => platform.kind === 'main');
-    if (!phase || !main || elapsedMs < phase.startSec * 1000) return;
-    const target = phase.mainWidth ?? main.width;
-    const duration = Math.max(phase.durationSec * 1000, 1);
-    const t = smoothstep((elapsedMs - phase.startSec * 1000) / duration);
-    const width = main.width + (target - main.width) * t;
-    if (t < 1 || !this.mainFinished) {
-      main.rect.setSize(width, main.height);
-      main.body.updateFromGameObject();
-      this.syncArt(main, 1);
-      if (t >= 1) this.mainFinished = true;
-    }
-  }
-
-  private refreshWarning(elapsedMs: number): void {
-    let text = '';
-    for (const phase of this.phases) {
-      if (!phase.warningText || phase.warningLeadSec <= 0) continue;
-      const start = phase.startSec * 1000;
-      const lead = phase.warningLeadSec * 1000;
-      if (elapsedMs >= start - lead && elapsedMs < start + 600) text = phase.warningText;
-    }
-    this.warning.setText(text);
-    this.warning.setVisible(text.length > 0);
-  }
-
-  private removePlatform(platform: LivePlatform): void {
-    platform.gone = true;
-    platform.body.enable = false;
-    platform.rect.setVisible(false);
-    platform.rect.setAlpha(0);
-    this.art.hideSide(platform.id);
-  }
-
-  private syncArt(platform: LivePlatform, alpha: number): void {
+  private syncArt(platform: LivePlatform): void {
     if (platform.kind === 'main') {
-      this.art.syncMain(platform.rect.x, platform.rect.y, platform.rect.width, platform.height);
+      this.art.syncMain(platform.baseX, platform.baseY, platform.visualWidth, platform.height);
       return;
     }
-    this.art.syncSide(platform.id, platform.rect.x, platform.rect.y, platform.height, alpha, !platform.gone);
+    this.art.syncSide(platform.id, platform.rect.x, platform.rect.y, platform.height, 1, true);
   }
-
-  private phase(id: ShrinkPhase['id']): ShrinkPhase | undefined {
-    return this.phases.find((phase) => phase.id === id);
-  }
-}
-
-function clamp01(value: number): number {
-  return Math.max(0, Math.min(1, value));
-}
-
-function smoothstep(value: number): number {
-  const t = clamp01(value);
-  return t * t * (3 - 2 * t);
 }

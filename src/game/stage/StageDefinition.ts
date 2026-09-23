@@ -12,6 +12,8 @@ export type PlatformDefinition = {
   width: number;
   height: number;
   color: number;
+  /** 絵の幅。省略時は当たり判定と同じ。常設床を絵より広くするときに使う。 */
+  visualWidth?: number;
 };
 
 /** 経過時間で足場が変わる段階。startSec は試合開始からの秒。 */
@@ -23,8 +25,10 @@ export type ShrinkPhase = {
   warningText: string;
   /** 演出の長さ。0 なら即座。 */
   durationSec: number;
-  /** shrink-main のときの最終幅 */
-  mainWidth?: number;
+  /** shrink-main 完了時の左 KO。床の幅は変えない。 */
+  koLeft?: number;
+  /** shrink-main 完了時の右 KO。 */
+  koRight?: number;
 };
 
 export type StageDefinition = {

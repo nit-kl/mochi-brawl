@@ -1,11 +1,16 @@
+/** スマホのひとり用と、PCの同じ端末での2人用。 */
+export type MatchMode = 'cpu' | 'local_vs';
+
 /** タイトルから対戦へ渡す選択結果。性能の数値は持たない。 */
 export type MatchSetup = {
+  mode: MatchMode;
   player1CharacterId: string;
   player2CharacterId: string;
   stageId: string;
 };
 
 export const DEFAULT_MATCH_SETUP: MatchSetup = {
+  mode: 'local_vs',
   player1CharacterId: 'mochimaru',
   player2CharacterId: 'potechi',
   stageId: 'ohirune_meadow'
@@ -23,6 +28,7 @@ export function loadMatchSetup(scene: Phaser.Scene): MatchSetup {
     return DEFAULT_MATCH_SETUP;
   }
   return {
+    mode: stored.mode === 'cpu' || stored.mode === 'local_vs' ? stored.mode : DEFAULT_MATCH_SETUP.mode,
     player1CharacterId: stored.player1CharacterId,
     player2CharacterId: stored.player2CharacterId,
     stageId: stored.stageId

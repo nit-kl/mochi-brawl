@@ -7,7 +7,7 @@ export class CombatDebugOverlay {
   private readonly graphics: Phaser.GameObjects.Graphics;
   private readonly label: Phaser.GameObjects.Text;
 
-  constructor(scene: Phaser.Scene, private readonly bounds: KoBounds) {
+  constructor(scene: Phaser.Scene) {
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(40);
     this.label = scene.add
@@ -22,15 +22,22 @@ export class CombatDebugOverlay {
       .setVisible(false);
   }
 
-  draw(enabled: boolean, hurtboxes: readonly Rect[], stageLine = ''): void {
+  draw(enabled: boolean, hurtboxes: readonly Rect[], bounds: KoBounds, stageLine = ''): void {
     this.graphics.clear();
     this.label.setVisible(enabled);
     if (!enabled) return;
 
-    const { left, right, top, bottom } = this.bounds;
     this.graphics.lineStyle(2, 0xff4d6a, 0.85);
-    this.graphics.strokeRect(left, top, right - left, bottom - top);
-    const boundsLine = `KO境界  左 ${left}  右 ${right}  上 ${top}  下 ${bottom}`;
+    this.graphics.lineBetween(bounds.left, 0, bounds.left, 720);
+    this.graphics.lineBetween(bounds.right, 0, bounds.right, 720);
+    this.graphics.lineBetween(0, bounds.top, 1280, bounds.top);
+    const bottomLine = bounds.bottomKoEnabled ? `下 ${Math.round(bounds.bottom)}` : 'bottom KO disabled';
+    const boundsLine = [
+      `current KO left ${Math.round(bounds.left)}`,
+      `current KO right ${Math.round(bounds.right)}`,
+      `current KO top ${Math.round(bounds.top)}`,
+      bottomLine
+    ].join('\n');
     this.label.setText(stageLine ? `${stageLine}\n${boundsLine}` : boundsLine);
 
     this.graphics.lineStyle(2, 0x14b8a6, 1);
