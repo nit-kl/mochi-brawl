@@ -2,11 +2,12 @@ import type { GameFrame } from './deviceLayout';
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
-const TOUCH_DIAMETER_CSS = 64;
-const BUTTON_GAP_CSS = 14;
-const EDGE_MARGIN_CSS = 18;
-const STICK_DIAMETER_CSS = 108;
-const KNOB_DIAMETER_CSS = 46;
+const CONTROL_ZONE_TOP_RATIO = 0.8;
+const TOUCH_DIAMETER_CSS = 56;
+const BUTTON_GAP_CSS = 10;
+const EDGE_MARGIN_CSS = 10;
+const STICK_DIAMETER_CSS = 82;
+const KNOB_DIAMETER_CSS = 34;
 
 export type Vec2 = { x: number; y: number };
 
@@ -24,35 +25,35 @@ export type TouchControlPlacement = {
   fontPx: number;
 };
 
-/** 右手は必殺を頂点、ジャンプを左下、攻撃を右下に置く。 */
+/** 戦闘エリアの下側に4ボタンを並べ、左端にスティックを置く。 */
 export function layoutTouchControls(frame: GameFrame, gameWidth = GAME_WIDTH, gameHeight = GAME_HEIGHT): TouchControlPlacement {
   const g = (css: number): number => css / frame.cssPerGame;
-  const touchRadius = g(TOUCH_DIAMETER_CSS / 2);
-  const dist = g(TOUCH_DIAMETER_CSS + BUTTON_GAP_CSS);
   const margin = g(EDGE_MARGIN_CSS);
-  const stickRadius = g(STICK_DIAMETER_CSS / 2);
   const bottom = gameHeight - frame.insetBottom - margin;
+  const controlZoneTop = gameHeight * CONTROL_ZONE_TOP_RATIO;
+  const availableHeightCss = (bottom - controlZoneTop) * frame.cssPerGame;
+  const buttonDiameterCss = Math.min(TOUCH_DIAMETER_CSS, Math.max(28, availableHeightCss));
+  const touchRadius = g(buttonDiameterCss / 2);
+  const dist = g(buttonDiameterCss + BUTTON_GAP_CSS);
+  const stickRadius = g(STICK_DIAMETER_CSS / 2);
   const right = gameWidth - frame.insetRight - margin;
   const left = frame.insetLeft + margin;
   const attack = { x: right - touchRadius, y: bottom - touchRadius };
-  const jump = { x: attack.x - dist, y: attack.y };
-  const special = {
-    x: (attack.x + jump.x) / 2,
-    y: attack.y - dist * Math.sin(Math.PI / 3)
-  };
+  const special = { x: attack.x - dist, y: attack.y };
+  const jump = { x: special.x - dist, y: attack.y };
   const guard = { x: jump.x - dist, y: jump.y };
   return {
     touchRadius,
-    visualRadius: touchRadius * 0.84,
+    visualRadius: touchRadius * 0.88,
     stickRadius,
     knobRadius: g(KNOB_DIAMETER_CSS / 2),
-    grabRadius: stickRadius * 1.28,
+    grabRadius: stickRadius * 1.25,
     stick: { x: left + stickRadius, y: bottom - stickRadius },
     jump,
     attack,
     special,
     guard,
-    fontPx: Math.max(12, g(13))
+    fontPx: Math.max(10, g(11))
   };
 }
 

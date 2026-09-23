@@ -13,7 +13,7 @@ type ButtonView = {
 
 const STROKE = 0x243044;
 
-/** 仮想スティックと右手3ボタンの見た目。入力の成否は持たない。 */
+/** 仮想スティックと右手4ボタンの見た目。入力の成否は持たない。 */
 export class TouchControlsView {
   private placement: TouchControlPlacement;
   private readonly root: Phaser.GameObjects.Container;
@@ -28,12 +28,12 @@ export class TouchControlsView {
 
   constructor(private readonly scene: Phaser.Scene) {
     this.placement = layoutTouchControls(measureGameFrame(scene));
-    this.stickRing = scene.add.circle(0, 0, this.placement.stickRadius, 0xffffff, 0.28);
-    this.stickRing.setStrokeStyle(5, 0xffffff, 0.95);
-    this.stickWell = scene.add.circle(0, 0, this.placement.stickRadius * 0.72, 0x102033, 0.28);
-    this.stickWell.setStrokeStyle(3, 0xffffff, 0.45);
-    this.knob = scene.add.circle(0, 0, this.placement.knobRadius, 0xffffff, 0.96);
-    this.knob.setStrokeStyle(4, STROKE, 1);
+    this.stickRing = scene.add.circle(0, 0, this.placement.stickRadius, 0xffffff, 0.12);
+    this.stickRing.setStrokeStyle(4, 0xffffff, 0.65);
+    this.stickWell = scene.add.circle(0, 0, this.placement.stickRadius * 0.72, 0x102033, 0.15);
+    this.stickWell.setStrokeStyle(2, 0xffffff, 0.35);
+    this.knob = scene.add.circle(0, 0, this.placement.knobRadius, 0xffffff, 0.72);
+    this.knob.setStrokeStyle(3, STROKE, 0.8);
 
     this.buttons = {
       jump: this.createButton(0x3d92f5, 0xb9dcff),
@@ -101,15 +101,15 @@ export class TouchControlsView {
     this.knobActive = active;
     const at = this.placement.stick;
     this.knob.setPosition(at.x + offsetX, at.y + offsetY);
-    this.stickRing.setStrokeStyle(active ? 7 : 5, 0xffffff, active ? 1 : 0.95);
-    this.knob.setFillStyle(0xffffff, active ? 1 : 0.96);
+    this.stickRing.setStrokeStyle(active ? 6 : 4, 0xffffff, active ? 0.95 : 0.65);
+    this.knob.setFillStyle(0xffffff, active ? 0.95 : 0.72);
   }
 
   setPressed(id: TouchButtonId, pressed: boolean): void {
     const button = this.buttons[id];
     button.root.setScale(pressed ? 0.92 : 1);
-    button.circle.setFillStyle(pressed ? button.pressedFill : button.fill, pressed ? 1 : 0.92);
-    button.circle.setStrokeStyle(pressed ? 6 : 4, pressed ? 0xffffff : STROKE, 1);
+    button.circle.setFillStyle(pressed ? button.pressedFill : button.fill, pressed ? 0.9 : 0.5);
+    button.circle.setStrokeStyle(pressed ? 5 : 3, pressed ? 0xffffff : STROKE, pressed ? 1 : 0.72);
   }
 
   resetPressed(): void {
@@ -141,8 +141,8 @@ export class TouchControlsView {
   }
 
   private createButton(fill: number, pressedFill: number): ButtonView {
-    const circle = this.scene.add.circle(0, 0, 40, fill, 0.92);
-    circle.setStrokeStyle(4, STROKE, 1);
+    const circle = this.scene.add.circle(0, 0, 40, fill, 0.5);
+    circle.setStrokeStyle(3, STROKE, 0.72);
     const root = this.scene.add.container(0, 0, [circle]);
     return { root, circle, fill, pressedFill };
   }
