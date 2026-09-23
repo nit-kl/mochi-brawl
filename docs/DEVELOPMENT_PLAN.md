@@ -152,7 +152,7 @@ Milestone 01 から 08、09-A、09-A2、09-B、09-C、09-D、10、11 は実装�
 - `MatchSetup.mode` は `cpu` または `local_vs`
 - スマホは 1P が操作し、2P は CPU。PC のタイトルで「ひとりで」「ふたりで」を選ぶ
 - `CpuInput` が `PlayerInput` を作る。Fighter は相手が CPU かを見ない
-- 判断は 100〜250ms ごと。接近、通常攻撃、たまに必殺、高い足場へのジャンプ、場外では復帰を優先する
+- 判断は 100〜250ms ごと。接近、通常攻撃、たまに必殺、高い足場へのジャンプ。この時点では床の外からの復帰も入っていた。復帰は Milestone 12 で外した
 - 技の違いは `CharacterDefinition` の motion から見る。難易度の数値は `normal` だけ
 - 足場は `StageRuntime.livePlatforms()` の今の幅を使う
 - `local_vs` の 2P は矢印キーのまま。CPU は動かない
@@ -166,6 +166,18 @@ Milestone 01 から 08、09-A、09-A2、09-B、09-C、09-D、10、11 は実装�
 - その後、台座の帯と、時間で足場や KO 範囲を狭くする処理はやめた
 - 上は -300 のまま。ふうせんジャンプとばねジャンプ、2 段ジャンプは空中戦の移動として残す
 - キャラクター性能、攻撃力、knockback、weight、ストック数、スプライト、HUD は変えていない
+
+## Milestone 12: 1P vs CPU の正式化（完了）
+
+- 対戦モードは `cpu` と `local_vs` のまま。スマホは CPU、PC は「ひとりで」「ふたりで」
+- `CpuInput` が `PlayerInput` を作る。Fighter に CPU 用の分岐は無い
+- Normal の判断は 150〜250ms。攻撃後に待ち、一定確率で判断を飛ばす
+- 接近、近距離の通常攻撃、中距離の横必殺、相手が上のときのジャンプと上必殺。空中でも相手方向へ歩く
+- 上必殺は空中の位置取りに使う。ジャンプから 2 段ジャンプ、上必殺で下から戻る処理は無い
+- 左右の回避は `currentKoBounds()` と `edgeSafetyDistance`。KO 線から約 130px 以内は中央へ戻る
+- 技の違いは `moveSpeed` と `AttackDefinition.motion`。キャラクター名では分岐しない
+- 相手キャラクターは `opponentProfile`。F3 のときだけ CPU の状態、距離、判断待ち、端の危険を出す
+- キャラクター性能、攻撃性能、ストック、KO 線、Phase、スプライト、ステージ、HUD、ヒット演出は変えていない
 
 ## Milestone 09-E 以降: 残りの本番アセット
 

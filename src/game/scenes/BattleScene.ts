@@ -206,7 +206,6 @@ export class BattleScene extends Phaser.Scene {
         stats: self.stats
       },
       opponent: { x: opponent.x, y: opponent.y },
-      platforms: this.stage.livePlatforms(),
       ko: this.stage.currentKoBounds()
     });
   }
