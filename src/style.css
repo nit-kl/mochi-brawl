@@ -21,6 +21,111 @@ html, body {
   height: 100%;
 }
 
+body.touch-battle {
+  --control-rail-width: max(76px, calc(env(safe-area-inset-left) + 72px), calc(env(safe-area-inset-right) + 72px));
+}
+
+body.touch-battle #game {
+  width: calc(100% - 2 * var(--control-rail-width));
+  margin-inline: auto;
+}
+
+.touch-controls[hidden] {
+  display: none;
+}
+
+.touch-controls {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: var(--control-rail-width) var(--control-rail-width);
+  justify-content: space-between;
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.touch-controls__rail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 100%;
+  background: #142737;
+}
+
+.touch-controls__rail--left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.touch-controls__rail--right {
+  flex-direction: column;
+  gap: clamp(5px, 2dvh, 10px);
+  padding-right: env(safe-area-inset-right);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.touch-controls__stick {
+  position: relative;
+  box-sizing: border-box;
+  width: min(76px, calc(100% - 4px));
+  aspect-ratio: 1;
+  border: 3px solid #a9dbe7;
+  border-radius: 50%;
+  background: #365567;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.touch-controls__stick.is-active {
+  border-color: #ffffff;
+  background: #496c7e;
+}
+
+.touch-controls__knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44%;
+  aspect-ratio: 1;
+  border: 2px solid #183243;
+  border-radius: 50%;
+  background: #e9f8ff;
+  box-sizing: border-box;
+  translate: -50% -50%;
+  pointer-events: none;
+}
+
+.touch-controls__button {
+  box-sizing: border-box;
+  width: min(clamp(38px, 14dvh, 58px), calc(100% - 4px));
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid #f4f8fb;
+  border-radius: 50%;
+  color: #162331;
+  font: 700 clamp(10px, 2.7dvh, 12px) sans-serif;
+  white-space: nowrap;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-controls__button--jump { background: #80bfff; }
+.touch-controls__button--attack { background: #ff8a83; }
+.touch-controls__button--special { background: #bb99ff; }
+.touch-controls__button--guard { background: #73dec5; }
+
+.touch-controls__button.is-pressed {
+  border-width: 4px;
+  filter: brightness(1.18);
+  scale: 0.93;
+}
+
 #rotate-hint {
   display: none;
   position: fixed;

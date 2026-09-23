@@ -1,165 +1,95 @@
-import Phaser from 'phaser';
-import { measureGameFrame } from './deviceLayout';
-import { layoutTouchControls, type TouchControlPlacement, type Vec2 } from './touchControlLayout';
-
 export type TouchButtonId = 'jump' | 'attack' | 'special' | 'guard';
 
-type ButtonView = {
-  root: Phaser.GameObjects.Container;
-  circle: Phaser.GameObjects.Arc;
-  fill: number;
-  pressedFill: number;
+type Vec2 = { x: number; y: number };
+
+const BUTTON_LABELS: Record<TouchButtonId, string> = {
+  jump: 'ジャンプ',
+  attack: '攻撃',
+  special: '必殺',
+  guard: '防御'
 };
 
-const STROKE = 0x243044;
-
-/** 仮想スティックと右手4ボタンの見た目。入力の成否は持たない。 */
+/** ゲームキャンバスの外側に置くスマホ専用の操作パネル。 */
 export class TouchControlsView {
-  private placement: TouchControlPlacement;
-  private readonly root: Phaser.GameObjects.Container;
-  private readonly stickRing: Phaser.GameObjects.Arc;
-  private readonly stickWell: Phaser.GameObjects.Arc;
-  private readonly knob: Phaser.GameObjects.Arc;
-  private readonly buttons: Record<TouchButtonId, ButtonView>;
-  private readonly labels: Record<TouchButtonId, Phaser.GameObjects.Text>;
-  private knobOffsetX = 0;
-  private knobOffsetY = 0;
-  private knobActive = false;
+  private readonly root: HTMLDivElement;
+  private readonly stick: HTMLDivElement;
+  private readonly knob: HTMLDivElement;
+  private readonly buttons: Record<TouchButtonId, HTMLButtonElement>;
 
-  constructor(private readonly scene: Phaser.Scene) {
-    this.placement = layoutTouchControls(measureGameFrame(scene));
-    this.stickRing = scene.add.circle(0, 0, this.placement.stickRadius, 0xffffff, 0.12);
-    this.stickRing.setStrokeStyle(4, 0xffffff, 0.65);
-    this.stickWell = scene.add.circle(0, 0, this.placement.stickRadius * 0.72, 0x102033, 0.15);
-    this.stickWell.setStrokeStyle(2, 0xffffff, 0.35);
-    this.knob = scene.add.circle(0, 0, this.placement.knobRadius, 0xffffff, 0.72);
-    this.knob.setStrokeStyle(3, STROKE, 0.8);
+  constructor() {
+    this.root = document.createElement('div');
+    this.root.className = 'touch-controls';
+    this.root.hidden = true;
 
+    const left = document.createElement('div');
+    left.className = 'touch-controls__rail touch-controls__rail--left';
+    this.stick = document.createElement('div');
+    this.stick.className = 'touch-controls__stick';
+    this.stick.setAttribute('aria-label', '移動スティック');
+    this.knob = document.createElement('div');
+    this.knob.className = 'touch-controls__knob';
+    this.stick.append(this.knob);
+    left.append(this.stick);
+
+    const right = document.createElement('div');
+    right.className = 'touch-controls__rail touch-controls__rail--right';
     this.buttons = {
-      jump: this.createButton(0x3d92f5, 0xb9dcff),
-      attack: this.createButton(0xf25b5b, 0xffc1b8),
-      special: this.createButton(0x9b6dff, 0xe3d4ff),
-      guard: this.createButton(0x4db7a1, 0xb7f4e2)
+      jump: this.createButton('jump'),
+      attack: this.createButton('attack'),
+      special: this.createButton('special'),
+      guard: this.createButton('guard')
     };
-    this.labels = {
-      jump: this.createLabel(this.buttons.jump, 'ジャンプ'),
-      attack: this.createLabel(this.buttons.attack, '攻撃'),
-      special: this.createLabel(this.buttons.special, '必殺'),
-      guard: this.createLabel(this.buttons.guard, '防御')
-    };
-
-    this.root = scene.add.container(0, 0, [
-      this.stickRing,
-      this.stickWell,
-      this.knob,
-      this.buttons.jump.root,
-      this.buttons.attack.root,
-      this.buttons.special.root,
-      this.buttons.guard.root
-    ]);
-    this.root.setScrollFactor(0);
-    this.root.setDepth(1000);
-    this.applyPlacement();
-  }
-
-  layout(): void {
-    this.placement = layoutTouchControls(measureGameFrame(this.scene));
-    this.applyPlacement();
+    right.append(this.buttons.jump, this.buttons.attack, this.buttons.special, this.buttons.guard);
+    this.root.append(left, right);
+    document.body.append(this.root);
   }
 
   setVisible(visible: boolean): void {
-    this.root.setVisible(visible);
+    this.root.hidden = !visible;
     if (!visible) this.setKnob(0, 0, false);
   }
 
-  hitButton(x: number, y: number): TouchButtonId | null {
-    const order: TouchButtonId[] = ['attack', 'special', 'jump', 'guard'];
-    for (const id of order) {
-      const at = this.placement[id];
-      if (distance(x, y, at.x, at.y) <= this.placement.touchRadius) return id;
-    }
-    return null;
+  stickElement(): HTMLDivElement {
+    return this.stick;
   }
 
-  hitsStick(x: number, y: number): boolean {
-    const at = this.placement.stick;
-    return distance(x, y, at.x, at.y) <= this.placement.grabRadius;
+  buttonElement(id: TouchButtonId): HTMLButtonElement {
+    return this.buttons[id];
   }
 
   stickCenter(): Vec2 {
-    return this.placement.stick;
+    const rect = this.stick.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }
 
   stickRadius(): number {
-    return this.placement.stickRadius;
+    return this.stick.getBoundingClientRect().width * 0.36;
   }
 
-  /** ノブをスティック中心からのゲーム座標オフセットへ動かす。 */
   setKnob(offsetX: number, offsetY: number, active: boolean): void {
-    this.knobOffsetX = offsetX;
-    this.knobOffsetY = offsetY;
-    this.knobActive = active;
-    const at = this.placement.stick;
-    this.knob.setPosition(at.x + offsetX, at.y + offsetY);
-    this.stickRing.setStrokeStyle(active ? 6 : 4, 0xffffff, active ? 0.95 : 0.65);
-    this.knob.setFillStyle(0xffffff, active ? 0.95 : 0.72);
+    this.knob.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+    this.stick.classList.toggle('is-active', active);
   }
 
   setPressed(id: TouchButtonId, pressed: boolean): void {
-    const button = this.buttons[id];
-    button.root.setScale(pressed ? 0.92 : 1);
-    button.circle.setFillStyle(pressed ? button.pressedFill : button.fill, pressed ? 0.9 : 0.5);
-    button.circle.setStrokeStyle(pressed ? 5 : 3, pressed ? 0xffffff : STROKE, pressed ? 1 : 0.72);
+    this.buttons[id].classList.toggle('is-pressed', pressed);
   }
 
   resetPressed(): void {
-    this.setPressed('jump', false);
-    this.setPressed('attack', false);
-    this.setPressed('special', false);
-    this.setPressed('guard', false);
+    for (const id of ['jump', 'attack', 'special', 'guard'] as const) this.setPressed(id, false);
     this.setKnob(0, 0, false);
   }
 
   destroy(): void {
-    this.root.destroy();
+    this.root.remove();
   }
 
-  private applyPlacement(): void {
-    const place = this.placement;
-    this.stickRing.setPosition(place.stick.x, place.stick.y);
-    this.stickRing.setRadius(place.stickRadius);
-    this.stickWell.setPosition(place.stick.x, place.stick.y);
-    this.stickWell.setRadius(place.stickRadius * 0.72);
-    this.knob.setRadius(place.knobRadius);
-    this.setKnob(this.knobOffsetX, this.knobOffsetY, this.knobActive);
-    for (const id of ['jump', 'attack', 'special', 'guard'] as const) {
-      const at = place[id];
-      this.buttons[id].root.setPosition(at.x, at.y);
-      this.buttons[id].circle.setRadius(place.visualRadius);
-      this.labels[id].setFontSize(place.fontPx);
-    }
+  private createButton(id: TouchButtonId): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `touch-controls__button touch-controls__button--${id}`;
+    button.textContent = BUTTON_LABELS[id];
+    button.setAttribute('aria-label', BUTTON_LABELS[id]);
+    return button;
   }
-
-  private createButton(fill: number, pressedFill: number): ButtonView {
-    const circle = this.scene.add.circle(0, 0, 40, fill, 0.5);
-    circle.setStrokeStyle(3, STROKE, 0.72);
-    const root = this.scene.add.container(0, 0, [circle]);
-    return { root, circle, fill, pressedFill };
-  }
-
-  private createLabel(button: ButtonView, text: string): Phaser.GameObjects.Text {
-    const label = this.scene.add
-      .text(0, 0, text, {
-        fontFamily: 'sans-serif',
-        fontSize: '15px',
-        color: '#1a1a1a'
-      })
-      .setOrigin(0.5);
-    button.root.add(label);
-    return label;
-  }
-}
-
-function distance(x1: number, y1: number, x2: number, y2: number): number {
-  return Math.hypot(x1 - x2, y1 - y2);
 }

@@ -17,6 +17,7 @@ export class TouchInput implements InputSource {
   private jumpQueued = false;
   private attackQueued = false;
   private specialQueued = false;
+  private readonly eventController = new AbortController();
   private stickPointerId: number | null = null;
   private readonly buttonPointer: Record<TouchButtonId, number | null> = {
     jump: null,
@@ -26,57 +27,65 @@ export class TouchInput implements InputSource {
   };
   private destroyed = false;
 
-  private readonly onPointerDown = (pointer: Phaser.Input.Pointer): void => {
-    if (!this.enabled) return;
-
-    const button = this.view.hitButton(pointer.x, pointer.y);
-    if (button) {
-      if (this.buttonPointer[button] !== null) return;
-      this.buttonPointer[button] = pointer.id;
-      this.queueButton(button);
-      this.view.setPressed(button, true);
-      return;
-    }
-
-    if (this.stickPointerId === null && this.view.hitsStick(pointer.x, pointer.y)) {
-      this.stickPointerId = pointer.id;
-      this.updateStick(pointer.x, pointer.y);
-    }
+  private readonly onStickDown = (event: PointerEvent): void => {
+    if (!this.enabled || this.stickPointerId !== null) return;
+    event.preventDefault();
+    this.stickPointerId = event.pointerId;
+    this.view.stickElement().setPointerCapture(event.pointerId);
+    this.updateStick(event.clientX, event.clientY);
   };
 
-  private readonly onPointerMove = (pointer: Phaser.Input.Pointer): void => {
-    if (!this.enabled || pointer.id !== this.stickPointerId) return;
-    this.updateStick(pointer.x, pointer.y);
+  private readonly onStickMove = (event: PointerEvent): void => {
+    if (!this.enabled || event.pointerId !== this.stickPointerId) return;
+    this.updateStick(event.clientX, event.clientY);
   };
 
-  private readonly onPointerUp = (pointer: Phaser.Input.Pointer): void => {
-    if (pointer.id === this.stickPointerId) this.resetStick();
-    for (const id of ['jump', 'attack', 'special', 'guard'] as const) {
-      if (this.buttonPointer[id] !== pointer.id) continue;
-      this.buttonPointer[id] = null;
-      this.view.setPressed(id, false);
-    }
+  private readonly onStickUp = (event: PointerEvent): void => {
+    if (event.pointerId === this.stickPointerId) this.resetStick();
   };
 
   private readonly onResize = (): void => {
-    this.view.layout();
     this.refreshEnabled();
+  };
+
+  private readonly onBlur = (): void => {
+    this.resetControls();
   };
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
-    scene.input.addPointer(4);
-    this.view = new TouchControlsView(scene);
+    this.view = new TouchControlsView();
+    const signal = this.eventController.signal;
+    const stick = this.view.stickElement();
+    stick.addEventListener('pointerdown', this.onStickDown, { signal });
+    stick.addEventListener('pointermove', this.onStickMove, { signal });
+    stick.addEventListener('pointerup', this.onStickUp, { signal });
+    stick.addEventListener('pointercancel', this.onStickUp, { signal });
+    for (const id of ['jump', 'attack', 'special', 'guard'] as const) {
+      const button = this.view.buttonElement(id);
+      button.addEventListener('pointerdown', (event) => {
+        if (!this.enabled || this.buttonPointer[id] !== null) return;
+        event.preventDefault();
+        this.buttonPointer[id] = event.pointerId;
+        button.setPointerCapture(event.pointerId);
+        this.queueButton(id);
+        this.view.setPressed(id, true);
+      }, { signal });
+      const release = (event: PointerEvent): void => {
+        if (this.buttonPointer[id] !== event.pointerId) return;
+        this.buttonPointer[id] = null;
+        this.view.setPressed(id, false);
+      };
+      button.addEventListener('pointerup', release, { signal });
+      button.addEventListener('pointercancel', release, { signal });
+    }
+    window.addEventListener('blur', this.onBlur, { signal });
     this.stopWatch = watchDeviceLayout(this.onResize);
     scene.scale.on(Phaser.Scale.Events.RESIZE, this.onResize);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       scene.scale.off(Phaser.Scale.Events.RESIZE, this.onResize);
     });
 
-    scene.input.on(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown);
-    scene.input.on(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove);
-    scene.input.on(Phaser.Input.Events.POINTER_UP, this.onPointerUp);
-    scene.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUp);
     this.refreshEnabled();
   }
 
@@ -105,10 +114,8 @@ export class TouchInput implements InputSource {
     this.destroyed = true;
     this.stopWatch();
     this.scene.scale.off(Phaser.Scale.Events.RESIZE, this.onResize);
-    this.scene.input.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown);
-    this.scene.input.off(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove);
-    this.scene.input.off(Phaser.Input.Events.POINTER_UP, this.onPointerUp);
-    this.scene.input.off(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.onPointerUp);
+    this.eventController.abort();
+    this.setEnabled(false);
     this.view.destroy();
   }
 
@@ -117,19 +124,21 @@ export class TouchInput implements InputSource {
   }
 
   private setEnabled(enabled: boolean): void {
+    if (this.enabled === enabled) return;
     this.enabled = enabled;
+    document.body.classList.toggle('touch-battle', enabled);
     this.view.setVisible(enabled);
-    if (!enabled) {
-      this.resetStick();
-      this.jumpQueued = false;
-      this.attackQueued = false;
-      this.specialQueued = false;
-      this.buttonPointer.jump = null;
-      this.buttonPointer.attack = null;
-      this.buttonPointer.special = null;
-      this.buttonPointer.guard = null;
-      this.view.resetPressed();
-    }
+    if (!enabled) this.resetControls();
+    this.scene.scale.refresh();
+  }
+
+  private resetControls(): void {
+    this.resetStick();
+    this.jumpQueued = false;
+    this.attackQueued = false;
+    this.specialQueued = false;
+    for (const id of ['jump', 'attack', 'special', 'guard'] as const) this.buttonPointer[id] = null;
+    this.view.resetPressed();
   }
 
   private queueButton(id: TouchButtonId): void {
