@@ -14,12 +14,21 @@ export function selectCharacterAnimation(
   const attacking = state.attackPhase !== 'idle';
   const order: CharacterAnimationName[] = [];
   if (state.hit) order.push('hit');
-  if (attacking && state.attackVisual === 'dash') order.push('special_roll');
-  if (attacking && state.attackVisual === 'slam') order.push('special_slam');
-  if (attacking && (state.attackVisual === 'balloon' || state.attackVisual === 'spring')) {
+  if (attacking && (state.attackVisual === 'dash' || state.attackVisual === 'botero_drill')) {
+    order.push('special_roll');
+  }
+  if (attacking && (state.attackVisual === 'slam' || state.attackVisual === 'potechi_slam')) {
+    order.push('special_slam');
+  }
+  if (attacking && (state.attackVisual === 'balloon' || state.attackVisual === 'spring' || state.attackVisual === 'potechi_spring' || state.attackVisual === 'botero_lift')) {
     order.push('up_special');
   }
-  if (attacking && state.attackVisual === 'down_special') order.push('down_special', 'attack');
+  if (attacking && state.attackVisual === 'botero_shell') order.push('idle');
+  if (attacking && state.attackVisual === 'potechi_quake') order.push('idle');
+  if (attacking && state.attackVisual === 'mochi_pulse') order.push('idle');
+  if (attacking && (state.attackVisual === 'down_special' || state.attackVisual === 'mochi_pulse')) {
+    order.push('down_special', 'attack');
+  }
   if (attacking && state.attackVisual === 'default') order.push('attack');
   if (!state.landed) order.push(state.velocityY < -RISING_SPEED ? 'jump' : 'fall');
   if (state.landed && Math.abs(state.velocityX) > RUN_SPEED) order.push('run');

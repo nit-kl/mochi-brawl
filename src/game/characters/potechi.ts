@@ -24,56 +24,57 @@ const DOSU: AttackDefinition = {
 
 const DOSSUN: AttackDefinition = {
   id: 'dossun',
-  startupMs: 180,
-  activeMs: 120,
-  recoveryMs: 320,
+  startupMs: 160,
+  activeMs: 155,
+  recoveryMs: 340,
   canMoveDuringAttack: false,
   hitbox: {
-    forward: 8,
-    width: 108,
-    height: 34,
-    offsetY: 30
+    forward: 16,
+    width: 154,
+    height: 48,
+    offsetY: 22
   },
-  damage: 14,
-  baseKnockback: 520,
+  damage: 15,
+  baseKnockback: 540,
   knockbackScaling: 10,
-  knockbackAngleDegrees: 35,
-  knockbackLockMs: 480,
+  knockbackAngleDegrees: 42,
+  knockbackLockMs: 500,
   motion: {
     kind: 'slam',
-    initialVelocityX: 260,
-    initialVelocityY: -480,
-    fallVelocity: 980,
-    landingDelay: 140,
-    maxDurationMs: 800,
+    initialVelocityX: 315,
+    initialVelocityY: -510,
+    fallVelocity: 1200,
+    landingDelay: 155,
+    maxDurationMs: 950,
     landingHitbox: {
-      forward: 8,
-      width: 108,
-      height: 34,
-      offsetY: 30
+      forward: 16,
+      width: 154,
+      height: 48,
+      offsetY: 22
     }
   },
-  visual: 'slam'
+  visual: 'potechi_slam'
 };
 
 const BANE: AttackDefinition = {
   id: 'bane',
-  startupMs: 100,
-  activeMs: 140,
-  recoveryMs: 240,
+  startupMs: 95,
+  activeMs: 185,
+  recoveryMs: 220,
   canMoveDuringAttack: false,
   hitbox: {
     forward: 0,
-    width: 46,
-    height: 44
+    width: 62,
+    height: 82,
+    offsetY: -12
   },
-  damage: 6,
-  baseKnockback: 220,
-  knockbackScaling: 4,
-  knockbackAngleDegrees: 80,
-  knockbackLockMs: 240,
-  motion: { kind: 'rise', velocity: -850, steerSpeed: 115 },
-  visual: 'spring'
+  damage: 7,
+  baseKnockback: 250,
+  knockbackScaling: 5,
+  knockbackAngleDegrees: 83,
+  knockbackLockMs: 280,
+  motion: { kind: 'rise', velocity: -940, steerSpeed: 145 },
+  visual: 'potechi_spring'
 };
 
 export const POTECHI: CharacterDefinition = {
@@ -91,9 +92,9 @@ export const POTECHI: CharacterDefinition = {
   specialAttack: DOSSUN,
   upSpecial: BANE,
   downSpecial: {
-    id: 'potechi-stomp', startupMs: 170, activeMs: 140, recoveryMs: 300,
-    canMoveDuringAttack: false, hitbox: { forward: 4, width: 112, height: 38, offsetY: 29 },
-    damage: 12, baseKnockback: 460, knockbackScaling: 9,
-    knockbackAngleDegrees: 55, knockbackLockMs: 450, motion: null, visual: 'down_special'
+    id: 'potechi-quake', startupMs: 210, activeMs: 155, recoveryMs: 320,
+    canMoveDuringAttack: false, hitbox: { forward: 0, width: 190, height: 58, offsetY: 25 },
+    damage: 12, baseKnockback: 470, knockbackScaling: 9,
+    knockbackAngleDegrees: 68, knockbackLockMs: 470, motion: null, visual: 'potechi_quake'
   }
 };

@@ -85,6 +85,8 @@ public/assets/
 けろたんの `attack.png` は `normal_attack_poses.png` の殴り・蹴りから作る。舌を伸ばすポーズは `special.png` のみに使う。
 
 下必殺用の専用画像は未配置。将来追加する場合、けろたん・ぼてろは `sprites/down_special.png`（横4コマ、各384×256px）、もちまるは `sprites/mochimaru_down_special.png`（横4コマ、各543×724px）、ぽてちは `sprites/potechi_down_special.png`（横4コマ、各543×724px）を使う。
+現在のもちまるとぽてちの下必殺は idle スプライトを縮め、コード描画の衝撃波・岩を重ねる。
+ぼてろの岩盤シェルも idle を縮め、岩の殻と破片をコード描画する。
 
 `idle.png` が無い場合は対戦中に全身 Placeholder を使う。`idle.png` だけある場合、未配置の動作は待機画像へ戻る。もちまる・ぽてちの既存スプライト名と個別の表示定義は下記のまま使う。
 

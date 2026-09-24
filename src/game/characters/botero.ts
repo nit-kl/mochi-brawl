@@ -19,23 +19,24 @@ export const BOTERO: CharacterDefinition = {
     knockbackAngleDegrees: 28, knockbackLockMs: 440, motion: null, visual: 'default'
   },
   specialAttack: {
-    id: 'botero-charge', startupMs: 200, activeMs: 320, recoveryMs: 300,
-    canMoveDuringAttack: false, hitbox: { forward: 40, width: 74, height: 50 },
+    id: 'botero-drill-rush', startupMs: 165, activeMs: 355, recoveryMs: 310,
+    canMoveDuringAttack: false, hitbox: { forward: 44, width: 84, height: 52 },
     damage: 14, baseKnockback: 500, knockbackScaling: 10,
     knockbackAngleDegrees: 23, knockbackLockMs: 490,
-    motion: { kind: 'dash', speed: 530 }, visual: 'dash'
+    motion: { kind: 'dash', speed: 590 }, visual: 'botero_drill'
   },
   upSpecial: {
-    id: 'botero-bounce', startupMs: 110, activeMs: 130, recoveryMs: 260,
-    canMoveDuringAttack: false, hitbox: { forward: 0, width: 56, height: 48 },
-    damage: 6, baseKnockback: 230, knockbackScaling: 4,
-    knockbackAngleDegrees: 80, knockbackLockMs: 250,
-    motion: { kind: 'rise', velocity: -810, steerSpeed: 105 }, visual: 'spring'
+    id: 'botero-lift', startupMs: 95, activeMs: 175, recoveryMs: 240,
+    canMoveDuringAttack: false, hitbox: { forward: 0, width: 62, height: 78, offsetY: -16 },
+    damage: 7, baseKnockback: 250, knockbackScaling: 5,
+    knockbackAngleDegrees: 84, knockbackLockMs: 280,
+    motion: { kind: 'rise', velocity: -900, steerSpeed: 120 }, visual: 'botero_lift'
   },
   downSpecial: {
-    id: 'botero-ground-pound', startupMs: 145, activeMs: 145, recoveryMs: 270,
-    canMoveDuringAttack: false, hitbox: { forward: 0, width: 106, height: 40, offsetY: 28 },
-    damage: 11, baseKnockback: 430, knockbackScaling: 9,
-    knockbackAngleDegrees: 65, knockbackLockMs: 430, motion: null, visual: 'down_special'
+    id: 'botero-bedrock-shell', startupMs: 225, activeMs: 170, recoveryMs: 330,
+    canMoveDuringAttack: false, hitbox: { forward: 0, width: 134, height: 72, offsetY: 8 },
+    damage: 12, baseKnockback: 450, knockbackScaling: 9,
+    knockbackAngleDegrees: 72, knockbackLockMs: 450, motion: null, visual: 'botero_shell',
+    armorDamageMultiplier: 0.5
   }
 };

@@ -100,9 +100,9 @@ export class PlaceholderCharacterView implements CharacterView {
   }
 
   private applyAction(style: AttackVisual, dt: number): void {
-    const dashing = style === 'dash';
+    const dashing = style === 'dash' || style === 'botero_drill';
     const ballooning = style === 'balloon';
-    const slamming = style === 'slam';
+    const slamming = style === 'slam' || style === 'potechi_slam';
     this.dashOrb.setVisible(dashing);
     this.dashMark.setVisible(dashing);
     this.balloon.setVisible(ballooning);
@@ -110,8 +110,11 @@ export class PlaceholderCharacterView implements CharacterView {
     this.slamMark.setVisible(slamming && this.shell.visible);
     this.marker.setVisible(!dashing && this.shell.visible);
     if (slamming) this.shell.setScale(1.22, 0.7);
+    else if (style === 'potechi_quake') this.shell.setScale(1.36, this.pose === 'active' ? 0.78 : 0.66);
+    else if (style === 'botero_shell') this.shell.setScale(1.18, this.pose === 'active' ? 0.8 : 0.73);
+    else if (style === 'mochi_pulse') this.shell.setScale(1.28, this.pose === 'active' ? 0.82 : 0.7);
     else if (style === 'down_special') this.shell.setScale(1.15, 0.72);
-    else if (style === 'spring') this.shell.setScale(0.84, 1.42);
+    else if (style === 'spring' || style === 'potechi_spring' || style === 'botero_lift') this.shell.setScale(0.84, 1.42);
     else this.shell.setScale(1, 1);
     if (dashing) this.dashOrb.rotation += 14 * dt;
   }

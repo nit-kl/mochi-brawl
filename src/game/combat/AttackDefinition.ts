@@ -23,7 +23,10 @@ export type AttackMotion =
       landingHitbox: HitboxShape;
     };
 
-export type AttackVisual = 'default' | 'dash' | 'balloon' | 'slam' | 'spring' | 'down_special';
+export type AttackVisual =
+  | 'default' | 'dash' | 'balloon' | 'slam' | 'spring' | 'down_special'
+  | 'mochi_pulse' | 'potechi_slam' | 'potechi_spring' | 'potechi_quake'
+  | 'botero_drill' | 'botero_lift' | 'botero_shell';
 
 /** 通常攻撃や必殺の性能。キャラクターごとに別定義へ差し替えられる。 */
 export type AttackDefinition = {
@@ -43,6 +46,8 @@ export type AttackDefinition = {
   knockbackLockMs: number;
   motion: AttackMotion | null;
   visual: AttackVisual;
+  /** 溜めと攻撃中に吹き飛びを受けず、被ダメージだけを軽減する。 */
+  armorDamageMultiplier?: number;
 };
 
 export type AttackPhaseName = 'idle' | 'startup' | 'active' | 'recovery';

@@ -155,6 +155,13 @@ export class BattleScene extends Phaser.Scene {
       );
       if (!defender.applyHitResult(result, time)) continue;
       this.hitEffects.spawn((attacker.x + defender.x) / 2, (attacker.y + defender.y) / 2, result.attack.visual, time);
+      if (result.attack.visual === 'mochi_pulse') this.cameras.main.shake(90, 0.0025);
+      if (result.attack.visual === 'potechi_slam' || result.attack.visual === 'potechi_quake') {
+        this.cameras.main.shake(120, 0.0035);
+      }
+      if (result.attack.visual === 'botero_drill' || result.attack.visual === 'botero_shell') {
+        this.cameras.main.shake(105, 0.003);
+      }
       console.log(
         `${attacker.displayName} ${result.attack.id} hit ${defender.displayName}: ${defender.damagePercent}% knockback ${Math.round(result.knockback)}`
       );

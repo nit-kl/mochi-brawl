@@ -39,6 +39,20 @@ export class SpriteCharacterView implements CharacterView {
     }
     this.usingAttackFallback = this.isNormalAttack(state);
     this.applyMetrics(anim, state);
+    if (state.attackVisual === 'mochi_pulse' && state.attackPhase !== 'idle') {
+      const squash = state.attackPhase === 'startup' ? 0.72 : state.attackPhase === 'active' ? 0.82 : 0.92;
+      this.sprite.scaleX *= 1 + (1 - squash) * 0.6;
+      this.sprite.scaleY *= squash;
+    }
+    if (state.attackVisual === 'potechi_quake' && state.attackPhase !== 'idle') {
+      const squash = state.attackPhase === 'startup' ? 0.66 : state.attackPhase === 'active' ? 0.78 : 0.9;
+      this.sprite.scaleX *= 1 + (1 - squash) * 0.72;
+      this.sprite.scaleY *= squash;
+    }
+    if (state.attackVisual === 'botero_shell' && state.attackPhase !== 'idle') {
+      this.sprite.scaleX *= 1.18;
+      this.sprite.scaleY *= state.attackPhase === 'active' ? 0.8 : 0.73;
+    }
     if (state.flashing) this.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
     else this.sprite.clearTint();
   }

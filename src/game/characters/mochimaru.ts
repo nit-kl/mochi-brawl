@@ -77,9 +77,9 @@ export const MOCHIMARU: CharacterDefinition = {
   specialAttack: GURUGURU,
   upSpecial: BALLOON,
   downSpecial: {
-    id: 'mochimaru-sweep', startupMs: 95, activeMs: 125, recoveryMs: 190,
-    canMoveDuringAttack: false, hitbox: { forward: 25, width: 76, height: 30, offsetY: 25 },
-    damage: 7, baseKnockback: 300, knockbackScaling: 7,
-    knockbackAngleDegrees: 35, knockbackLockMs: 340, motion: null, visual: 'down_special'
+    id: 'mochi-press', startupMs: 160, activeMs: 150, recoveryMs: 260,
+    canMoveDuringAttack: false, hitbox: { forward: 0, width: 164, height: 58, offsetY: 24 },
+    damage: 9, baseKnockback: 365, knockbackScaling: 8,
+    knockbackAngleDegrees: 72, knockbackLockMs: 400, motion: null, visual: 'mochi_pulse'
   }
 };

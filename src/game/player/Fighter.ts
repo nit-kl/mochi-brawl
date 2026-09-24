@@ -5,7 +5,10 @@ import { Hurtbox } from '../combat/Hurtbox';
 import { DOWN_SPECIAL_INPUT, UP_SPECIAL_INPUT, type CharacterDefinition } from '../characters/CharacterDefinition';
 import type { PlayerInputState } from '../input/PlayerInput';
 import type { CharacterView, CharacterViewState } from '../view/CharacterAnimation';
+import { MochiPulseView } from '../view/MochiPulseView';
+import { BoteroSpecialView } from '../view/BoteroSpecialView';
 import { PlaceholderCharacterView } from '../view/PlaceholderCharacterView';
+import { PotechiSpecialView } from '../view/PotechiSpecialView';
 import { SpriteCharacterView } from '../view/SpriteCharacterView';
 import { PlaceholderPlayer } from './PlaceholderPlayer';
 
@@ -27,6 +30,9 @@ export class Fighter {
   readonly attack: AttackController;
   readonly stats: CharacterDefinition;
   private readonly view: CharacterView;
+  private readonly mochiPulse: MochiPulseView;
+  private readonly potechiSpecial: PotechiSpecialView;
+  private readonly boteroSpecial: BoteroSpecialView;
   private readonly guardRing: Phaser.GameObjects.Arc;
   private guardMeter = GUARD_MAX;
   private guarding = false;
@@ -55,6 +61,9 @@ export class Fighter {
       ? new SpriteCharacterView(scene, stats.spriteSet, x, feetY)
       : new PlaceholderCharacterView(scene, x, feetY, color, stats.look);
     this.attack = new AttackController(scene, stats.normalAttack);
+    this.mochiPulse = new MochiPulseView(scene);
+    this.potechiSpecial = new PotechiSpecialView(scene);
+    this.boteroSpecial = new BoteroSpecialView(scene);
     this.guardRing = scene.add.circle(x, y, 47, 0x50d6c5, 0.18);
     this.guardRing.setStrokeStyle(5, 0x89fff1, 0.85).setDepth(5).setVisible(false);
     this.syncView(0, 0);
@@ -151,6 +160,13 @@ export class Fighter {
       }
       this.breakGuard(now);
     }
+    const armored = this.attack.attackDefinition.armorDamageMultiplier;
+    if (armored !== undefined && (this.attack.currentPhase === 'startup' || this.attack.currentPhase === 'active')) {
+      this.damagePercent += result.damage * armored;
+      this.flashUntil = now + HIT_FLASH_MS;
+      this.syncView(0, now);
+      return true;
+    }
     this.damagePercent += result.damage;
     this.isInKnockback = true;
     this.knockbackUntil = now + result.attack.knockbackLockMs;
@@ -190,6 +206,9 @@ export class Fighter {
   eliminate(): void {
     this.alive = false;
     this.attack.cancel();
+    this.mochiPulse.hide();
+    this.potechiSpecial.hide();
+    this.boteroSpecial.hide();
     this.character.eliminate();
     this.view.hide();
     this.guardRing.setVisible(false);
@@ -197,6 +216,9 @@ export class Fighter {
 
   setAlpha(alpha: number): void {
     this.view.setAlpha(alpha);
+    this.mochiPulse.setAlpha(alpha);
+    this.potechiSpecial.setAlpha(alpha);
+    this.boteroSpecial.setAlpha(alpha);
     this.guardRing.setAlpha(alpha);
   }
 
@@ -227,6 +249,9 @@ export class Fighter {
       flashing: now < this.flashUntil
     };
     this.view.sync(state);
+    this.mochiPulse.sync(this.x, this.y, this.attack.visual, this.attack.currentPhase, now);
+    this.potechiSpecial.sync(state, now);
+    this.boteroSpecial.sync(state, now);
   }
 
   private updateGuard(input: PlayerInputState, dt: number, now: number, canAct: boolean): void {

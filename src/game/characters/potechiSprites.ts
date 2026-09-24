@@ -89,9 +89,9 @@ export const POTECHI_SPRITES: CharacterSpriteSet = {
       url: 'assets/characters/potechi/sprites/potechi_up_special.png',
       frameWidth: CELL6,
       frameHeight: STRIP_H,
-      frames: [0, 1, 2],
-      frameRate: 10,
-      repeat: -1,
+      frames: [0, 1, 2, 3, 4, 5],
+      frameRate: 12,
+      repeat: 0,
       visualScale: SCALE,
       footAnchor: { x: 0.5, y: (STRIP_H - 112) / STRIP_H }
     },
